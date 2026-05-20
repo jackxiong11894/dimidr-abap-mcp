@@ -24,8 +24,12 @@ import { setNotifyToolListChanged } from "./tools/handlers/meta.js";
 
 // ── Server instance ─────────────────────────────────────────────────────────
 
+// `serverInfo.name` is suffixed with `cfg.instanceId` so MCP clients that key
+// connectors by this field (e.g. Claude Desktop's chat picker) treat multiple
+// concurrent instances pointing at different SAP systems as distinct entries
+// instead of collapsing them into a single connector.
 export const server = new Server(
-  { name: "abap-mcp-server", version: "2.0.0" },
+  { name: `abap-mcp-server-${cfg.instanceId}`, version: "2.0.0" },
   { capabilities: { tools: { listChanged: true }, prompts: {} } }
 );
 

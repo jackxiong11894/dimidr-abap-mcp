@@ -203,24 +203,108 @@ Der ABAP MCP Server läuft im **stdio-Modus** (Standard Input/Output), nicht im 
 
 ---
 
+## Netzwerk-Routing
+
+Das ABAP-System muss vom Rechner, auf dem der MCP-Server läuft, erreichbar sein. Der Server unterstützt vier Routing-Modi — er probiert sie in dieser Reihenfolge und nimmt den **ersten konfigurierten**:
+
+| Priorität | Modus | Wann sinnvoll |
+|---|---|---|
+| 1 | **BTP Connectivity Proxy** | Hybride CAP-Entwicklung; ABAP-System nur via Cloud Connector erreichbar |
+| 2 | **SAProuter NI-Tunnel** | Klassische B2B-VPN, in denen nur Port 3299 von außen offen ist |
+| 3 | **HTTP-CONNECT-Proxy** | Corporate-Proxy oder lokaler SSH-/socat-Tunnel |
+| 4 | **Direkt HTTPS** | DNS und Firewall erlauben direkten Zugriff |
+
+### Modus 1 — BTP Connectivity Proxy (empfohlen für CAP-Dev)
+
+Routet HTTPS durch den vom BTP-Subaccount vertrauten Cloud Connector. Der MCP-Server piggybacked auf dem lokal weitergeleiteten Connectivity Proxy einer Cloud-Foundry-App, die das `connectivity`-Service gebunden hat.
+
+**Einmalige Vorbereitung:**
+```bash
+# In separatem Terminal — solange aktiv lassen, wie der MCP läuft.
+cf ssh <app> -N -L 20003:connectivityproxy.internal.cf.<region>.hana.ondemand.com:20003
+
+# Im CAP-Projekt: connectivity-Service binden (einmalig)
+cds bind --to <connectivity-instance> --credentials '{"onpremise_proxy_host":"localhost"}' --for hybrid
+```
+
+**MCP-Konfiguration (`.env` oder MCP-Client `env`):**
+```env
+SAP_URL=http://mdadneap1.example.com:44300        # http:// auf Port 20003!
+SAP_BTP_CONNECTIVITY_PROXY=http://localhost:20003
+SAP_BTP_CONNECTIVITY_LOCATION_ID=                  # leer = Default-CC; ggf. mit dem Diagnose-Tool ermitteln
+SAP_BTP_CONNECTIVITY_CDS_BIND_FILE=/abs/path/<project>/.cdsrc-private.json
+SAP_BTP_CONNECTIVITY_CDS_BIND_NAME=connectivity
+SAP_BTP_CF_HOME=/abs/path/<project>                # optional, projekteigene cf-Session
+```
+
+Drei JWT-Quellen werden in dieser Reihenfolge probiert: `*_CREDS_FILE` → `*_CDS_BIND_FILE` + `*_CDS_BIND_NAME` → direkte `*_CLIENT_ID/_SECRET/_TOKEN_URL`. Details siehe [`.env.example`](.env.example).
+
+**Hinweise zum Protokoll:**
+- Connectivity Proxy auf Port **20003** ist ein HTTP-Forward-Proxy → `SAP_URL` muss `http://...` sein. Der Cloud Connector übernimmt die Backend-TLS.
+- Auf Port **20004** spricht der Proxy CONNECT-Tunneling → `SAP_URL=https://...`.
+- Der Cloud Connector muss `/sap/bc/adt/*` als Resource freigeben.
+
+**Diagnose:**
+```bash
+npm run diag:btp-proxy           # End-to-End-Probe gegen SAP_URL/sap/bc/adt/discovery
+npm run diag:btp-token           # XSUAA-JWT-Claims anzeigen (subaccount, audience, scope)
+npm run diag:btp-destination -- --list             # alle Destinations auflisten
+npm run diag:btp-destination -- <DESTINATION_NAME> # Location-ID + virtual host ermitteln
+npm run diag:adt                                   # End-to-End-Test via getClient()
+```
+
+### Modus 2 — SAProuter NI-Tunnel
+
+```env
+SAP_URL=https://<target-host>:<port>
+SAP_ROUTER=/H/saproutprd.example.com/S/3299        # oder kurz: host:port
+# SAP_ROUTER_PASSWORD=                              # falls saprouttab Passwort verlangt
+# SAP_ROUTER_DEBUG=true                             # NI-Frames auf stderr
+```
+Voraussetzung: der `saprouttab` muss eine Permit-Regel für (deine Quelle → target host:port) enthalten. Sonst antwortet der SAProuter mit `NI_RTERR`. Die Backend-Hosts müssen außerdem HTTPS auf dem genannten Port wirklich akzeptieren (Web Dispatcher oder ICM `icm/server_port`).
+
+### Modus 3 — HTTP-CONNECT-Proxy
+
+```env
+SAP_PROXY_URL=http://proxy.corp.example.com:8080    # oder http://localhost:8443 (SSH-Tunnel)
+```
+Standard-Env-Variablen `HTTPS_PROXY` / `HTTP_PROXY` werden ebenfalls honoriert.
+
+### Modus 4 — Direkt HTTPS
+
+Keine zusätzlichen Variablen. Falls das Backend ein selbst signiertes Zertifikat hat, zusätzlich `SAP_ALLOW_UNAUTHORIZED=true` (nur DEV-Systeme).
+
+### Was NICHT in `SAP_URL` gehört
+- **SAProuter-Routes** (`/H/.../S/...`): SAProuter spricht SAP-NI-Binärprotokoll, nicht HTTP. Gehört in `SAP_ROUTER`.
+- **Cloud-Connector-virtual-host-only-Pfade**: das ist die `SAP_URL`. Der Pfad-Präfix-Mapping macht der Cloud Connector.
+
+---
+
 ## Troubleshooting
 
 **"ADT Fehler: User ist currently editing..."**
-- Der Server versucht, eine Datei zu sperren, die schon gesperrt ist (z.B. von einem vorherigen Fehler)
-- Lösung: SAP Studio öffnen und die Lock-Session beenden, oder Server neu starten
+- Der Server versucht, eine Datei zu sperren, die schon gesperrt ist (z.B. von einem vorherigen Fehler).
+- Lösung: SAP Studio öffnen und die Lock-Session beenden, oder Server neu starten.
 
 **Include-Aktivierungsfehler**
-- Includes können nicht standalone aktiviert werden
-- Der Server erkennt das automatisch und aktiviert die Include im Kontext des Hauptprogramms
-- Falls nötig, `mainProgram`-Parameter beim Schreiben angeben
+- Includes können nicht standalone aktiviert werden. Der Server erkennt das automatisch und aktiviert die Include im Kontext des Hauptprogramms. Falls nötig, `mainProgram`-Parameter beim Schreiben angeben.
 
 **"SAP_URL, SAP_USER and SAP_PASSWORD must be set"**
-- `.env`-Datei fehlt oder Server wurde aus dem falschen Verzeichnis gestartet
-- Bei Cline: `cwd`-Feld in der MCP-Config prüfen
+- `.env`-Datei fehlt oder Server wurde aus dem falschen Verzeichnis gestartet. Bei Cline: `cwd`-Feld in der MCP-Config prüfen.
 
-**Connection refused**
-- VPN aktiv? SAP-System erreichbar? URL korrekt?
+**Connection refused / `ENOTFOUND <host>`**
+- VPN aktiv? SAP-System erreichbar? URL korrekt? `nslookup <host>` muss von dieser Maschine funktionieren — falls nicht, ist es kein Codeproblem, sondern DNS/VPN.
+
+**BTP Connectivity Proxy: HTTP 503 "no SAP Cloud Connector matching the requested tunnel"**
+- Falsche Subaccount-Audience im JWT (z.B. Service-Key aus anderem Subaccount) oder fehlende/falsche `SAP_BTP_CONNECTIVITY_LOCATION_ID`.
+- `npm run diag:btp-token` zeigt die `zid` (Subaccount-ID) und `aud` des Tokens an.
+- `npm run diag:btp-destination -- --list` zeigt alle in deinem Subaccount konfigurierten Location-IDs.
+
+**BTP Connectivity Proxy: HTTP 405 "HTTPS proxying is not supported"**
+- `SAP_URL` ist `https://...`, aber der Proxy läuft auf dem HTTP-Forward-Port (20003). Entweder `SAP_URL` auf `http://` umstellen oder die SSH-Weiterleitung auf Port 20004 setzen.
+
+**`cf service-key` schlägt fehl (login expired / no org targeted)**
+- Der Server gibt eine präzise Fehlermeldung mit `cf`-Befehl-Vorschlag aus. Üblicherweise reicht: `CF_HOME=<projekt> cf login --sso`.
 
 **Self-signed Zertifikat (nur DEV)**
-- In der `.env` oder MCP-Config `env` setzen: `NODE_TLS_REJECT_UNAUTHORIZED=0`
-- Nur für Entwicklungssysteme mit Self-signed Zertifikaten!
+- `SAP_ALLOW_UNAUTHORIZED=true` setzen. Niemals in Produktion!
