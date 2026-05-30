@@ -19,6 +19,8 @@ Die meisten ADT-Bridges sprechen nur direktes HTTPS. Dieser Server probiert vier
 
 ### Weitere starke Merkmale
 
+- **🚀 Lokale `.abap`-Datei + Bulk-Push — 15 Minuten → Sekunden** — Andere KI-Ansätze schreiben ABAP-Code zeichenweise direkt in das ADT-System; bei einem großen Programm dauert das bis zu **15 Minuten pro Schreibvorgang**. Dieser Server arbeitet stattdessen mit einer lokalen `.abap`-Datei: der Agent editiert lokal, und `write_abap_source` pusht den vollständigen Stand in einem einzigen ADT-API-Aufruf — in **Sekunden**. Bei 10 iterativen Korrekturen sind das bis zu **150 gesparte Minuten** pro Session.
+
 - **🔁 Rekursives Coding bis zur erfolgreichen Aktivierung** — Der Write-Workflow läuft `lock → write → Syntaxcheck → aktivieren → unlock` und **aktiviert nur bei sauberem Syntaxcheck**. Schlägt etwas fehl, bekommt der Agent die konkrete Fehlerliste zurück und korrigiert iterativ weiter, bis das Objekt fehlerfrei aktiviert ist. Du erhältst aktivierten, lauffähigen Code statt eines Entwurfs mit roten Markern.
 - **🎯 Deferred Tools — ~75–80 % Token-Ersparnis** — Statt alle 59 Tools in jeden Kontext zu laden, startet der Server mit nur **18 Core-Tools**. Der Rest wird bei Bedarf über das Meta-Tool `find_tools` aktiviert (`find_tools(category=…)` oder `find_tools(query=…)`).
 - **✂️ Method-Level Surgery** — `read_abap_method` / `edit_abap_method` lesen bzw. ersetzen einen einzelnen `METHOD…ENDMETHOD`-Block. Der Agent gibt nicht mehr die ganze Klasse aus, um eine Methode zu ändern — der Server splittet den neuen Rumpf server-seitig in die Quelle und durchläuft den normalen Write-Workflow. Größter Token-Hebel bei iterativem Coding.
