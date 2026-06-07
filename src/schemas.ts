@@ -135,7 +135,7 @@ export const S_CreateServiceBinding = z.object({
   devClass:          z.string().describe("Package"),
   transport:         z.string().optional(),
   serviceDefinition: z.string().describe("Name of the SRVD service definition to bind, e.g. ZSD_ORDERS_SRV_D"),
-  bindingType:       z.enum(["V2_WEB_API", "V2_UI"]).default("V2_UI").describe("V2_UI = Fiori / SAPUI5 app; V2_WEB_API = external API consumer"),
+  bindingType:       z.enum(["V2_WEB_API", "V2_UI", "V4_WEB_API", "V4_UI"]).default("V2_UI").describe("V2_UI = OData V2 Fiori/SAPUI5; V2_WEB_API = OData V2 external API; V4_UI = OData V4 Fiori/SAPUI5; V4_WEB_API = OData V4 external API"),
 });
 export const S_PublishServiceBinding = z.object({
   name:    z.string().describe("Service binding name, e.g. ZSD_ORDERS_SRV_B"),

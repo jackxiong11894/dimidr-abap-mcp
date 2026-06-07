@@ -105,7 +105,7 @@ export const TOOL_SHORT_DESCRIPTIONS: Record<string, string> = {
   create_message_class:             "Create new message class (MSAG)",
   create_cds_metadata_extension:    "Create new CDS Metadata Extension (DDLX) for UI annotations",
   create_service_definition:        "Create new OData Service Definition (SRVD)",
-  create_service_binding:           "Create new OData Service Binding (SRVB) → V2_UI or V2_WEB_API",
+  create_service_binding:           "Create new OData Service Binding (SRVB) → V2_UI, V2_WEB_API, V4_UI or V4_WEB_API",
   publish_service_binding:          "Publish a Service Binding to activate the OData endpoint",
   create_data_control_language:     "Create new CDS Data Control Language source (DCLS) for access control",
   create_behavior_definition:       "Create new RAP Behavior Definition (BDEF) — direct ADT HTTP, BDL via write_abap_source",

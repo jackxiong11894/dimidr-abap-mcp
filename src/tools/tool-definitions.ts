@@ -88,7 +88,7 @@ export const TOOLS: ToolDef[] = [
     description: "Creates a new OData Service Definition (SRVD) that exposes one or more CDS entities as an OData service. Name must start with Z or Y. Write the service definition source with write_abap_source, then bind it with create_service_binding. ⚠️ Requires ALLOW_WRITE=true.",
     schema: S.S_CreateServiceDefinition },
   { name: "create_service_binding",
-    description: "Creates a new OData Service Binding (SRVB) that ties a Service Definition to a protocol (OData V2). bindingType: V2_UI for Fiori/SAPUI5 apps, V2_WEB_API for external API consumers. After creation, publish it with publish_service_binding. ⚠️ Requires ALLOW_WRITE=true.",
+    description: "Creates a new OData Service Binding (SRVB) that ties a Service Definition to a protocol (OData V2 or V4). bindingType: V2_UI / V4_UI for Fiori/SAPUI5 apps, V2_WEB_API / V4_WEB_API for external API consumers. After creation, publish it with publish_service_binding. ⚠️ Requires ALLOW_WRITE=true.",
     schema: S.S_CreateServiceBinding },
   { name: "publish_service_binding",
     description: "Publishes (activates) an OData Service Binding to make the OData service accessible. Must be called after create_service_binding. Returns the service URL on success. ⚠️ Requires ALLOW_WRITE=true.",

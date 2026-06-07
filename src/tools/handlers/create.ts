@@ -180,7 +180,13 @@ export async function handleCreateServiceBinding(client: ADTClient, args: Record
   assertPackageAllowed(p.devClass);
   assertCustomerNamespace(p.name, ["Z", "Y"]);
   const n = p.name.toUpperCase();
-  const category: "0" | "1" = p.bindingType === "V2_UI" ? "1" : "0";
+  // BindingCategory in abap-adt-api is typed as "0"|"1" (V2 only) but ADT also
+  // accepts "2" (V4 UI) and "3" (V4 Web API). Cast to satisfy the compiler.
+  const category = (
+    p.bindingType === "V2_UI"      ? "1" :
+    p.bindingType === "V4_UI"      ? "2" :
+    p.bindingType === "V4_WEB_API" ? "3" : "0"
+  ) as NewBindingOptions["category"];
   const bindingOptions: NewBindingOptions = {
     objtype: "SRVB/SVB",
     name: n,
