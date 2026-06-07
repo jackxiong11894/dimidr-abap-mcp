@@ -6,7 +6,13 @@
  * rest of the codebase can rely on plain typed fields without re-checking.
  */
 
-import "dotenv/config";
+import { config as dotenvConfig } from "dotenv";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+// Load .env from the project root (parent of dist/) so the server works
+// regardless of the current working directory.
+dotenvConfig({ path: resolve(dirname(fileURLToPath(import.meta.url)), "..", ".env") });
 
 const SAP_ROUTE_PATTERN = /\/H\/[^/]+\/S\/\d+/i;
 

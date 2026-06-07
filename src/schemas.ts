@@ -386,25 +386,45 @@ export const S_FindDeadCode = z.object({
 });
 
 // --- INTENT FACADE ---
+// Some MCP clients (e.g. Claude Code) serialise the nested `args` object as a
+// JSON string instead of a real object. Zod's z.record() then rejects it with
+// "Expected object, received string". Coerce a stringified payload back into an
+// object before validation so the consolidated verbs accept both shapes.
+const coerceArgsObject = z.preprocess((v) => {
+  if (typeof v === "string") {
+    const s = v.trim();
+    if (s === "") return undefined;
+    try {
+      const parsed = JSON.parse(s);
+      // Only accept JSON that decodes to a plain object; otherwise leave the
+      // original value so zod surfaces a meaningful validation error.
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed;
+    } catch {
+      /* fall through – let zod report the type mismatch */
+    }
+  }
+  return v;
+}, z.record(z.unknown()).optional());
+
 export const S_IntentRead = z.object({
   operation: z.string().describe(
     "What to read: source | method | contract | info | where_used | table | table_fields | ddic | revisions | context"),
-  args: z.record(z.unknown()).optional().describe("Arguments for the underlying tool (same shape as the granular tool)"),
+  args: coerceArgsObject.describe("Arguments for the underlying tool (same shape as the granular tool)"),
 });
 export const S_IntentWrite = z.object({
   operation: z.string().describe(
     "What to write: source | method | activate | pretty_print | create_program | create_class | create_interface | " +
     "create_function_group | create_cds_view | create_table | create_message_class | delete"),
-  args: z.record(z.unknown()).optional().describe("Arguments for the underlying tool (same shape as the granular tool)"),
+  args: coerceArgsObject.describe("Arguments for the underlying tool (same shape as the granular tool)"),
 });
 export const S_IntentSearch = z.object({
   operation: z.string().describe("What to search: objects | source | call_graph | dead_code"),
-  args: z.record(z.unknown()).optional().describe("Arguments for the underlying tool"),
+  args: coerceArgsObject.describe("Arguments for the underlying tool"),
 });
 export const S_IntentDiagnose = z.object({
   operation: z.string().describe(
     "What to diagnose: syntax | atc | unit | ddic_validate | clean_abap | dumps | dump_detail | traces | trace_detail | workflow"),
-  args: z.record(z.unknown()).optional().describe("Arguments for the underlying tool"),
+  args: coerceArgsObject.describe("Arguments for the underlying tool"),
 });
 
 // --- WORKFLOW ANALYSIS ---
