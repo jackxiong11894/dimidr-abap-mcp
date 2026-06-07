@@ -118,10 +118,38 @@ export async function writeWorkflow(
 
       log.push(`✏️  Writing source code (${source.length} characters)...`);
       const sourceUrl = objectUrl.endsWith("/source/main") ? objectUrl : `${objectUrl}/source/main`;
-      await client.setObjectSource(sourceUrl, source, lockHandle, transport || undefined);
-      // Server copy changed — drop any cached source so subsequent reads revalidate.
-      invalidateSource(objectUrl);
-      log.push("✅ Source code saved");
+      // setObjectSource may fail if the lock was acquired without corrNr (same-user re-lock)
+      // but the object is actually in a different transport than the one passed by the caller.
+      // In that case, extract the correct transport from the error and retry.
+      try {
+        await client.setObjectSource(sourceUrl, source, lockHandle, transport || undefined);
+        // Server copy changed — drop any cached source so subsequent reads revalidate.
+        invalidateSource(objectUrl);
+        log.push("✅ Source code saved");
+      } catch (e) {
+        const writeErrMsg = e instanceof Error ? e.message : String(e);
+        const isWriteLockConflict = writeErrMsg.includes("already locked") ||
+          (isAdtError(e) && (
+            e.properties["T100KEY-ID"] === "CTS_WBO_API" ||
+            writeErrMsg.includes("CTS_WBO_API")
+          ));
+        if (isWriteLockConflict) {
+          // Extract the transport that actually holds the lock
+          // e.g. "already locked in request S4PK912551 of user ..."
+          const lockedInMatch = writeErrMsg.match(/locked in request (\w+)/i);
+          const correctTransport = lockedInMatch?.[1];
+          if (correctTransport && correctTransport !== transport) {
+            log.push(`⚠️ Write failed (lock in ${correctTransport}), retrying with corrNr=${correctTransport}...`);
+            await client.setObjectSource(sourceUrl, source, lockHandle, correctTransport);
+            invalidateSource(objectUrl);
+            log.push(`✅ Source code saved (corrNr retry with ${correctTransport})`);
+          } else {
+            throw e;
+          }
+        } else {
+          throw e;
+        }
+      }
       await onProgress?.("✏️ Source code saved");
 
       // Early DDIC validation prevents typical infinite loops caused by field name errors
