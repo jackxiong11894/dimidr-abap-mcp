@@ -44,10 +44,11 @@ export async function writeWorkflow(
           // Extract the transport that actually holds the lock from the error message
           // e.g. "already locked in request S4PK912551 of user ..."
           const lockedInMatch = errMsg.match(/locked in request (\w+)/i);
-          const corrNr = lockedInMatch?.[1] ?? transport;
-          if (!corrNr) { throw lockErr; }
-          log.push(`⚠️ Lock failed (object in transport ${corrNr}), retrying with corrNr=${corrNr}...`);
-          try {
+          const corrNrFromErr = lockedInMatch?.[1] ?? transport;
+          if (!corrNrFromErr) { throw lockErr; }
+
+          // Helper: attempt a single lock POST with a given corrNr
+          const tryLockWithCorrNr = async (corrNr: string): Promise<string | undefined> => {
             const lockResp = await client.httpClient.request(objectUrl, {
               method: "POST",
               headers: {
@@ -56,16 +57,50 @@ export async function writeWorkflow(
               qs: { _action: "LOCK", accessMode: "MODIFY", corrNr },
             });
             const bodyStr = typeof lockResp.body === "string" ? lockResp.body : JSON.stringify(lockResp.body);
-            const match = bodyStr.match(/<LOCK_HANDLE>(.*?)<\/LOCK_HANDLE>/);
-            const handle = match?.[1];
-            if (!handle) throw new Error("No LOCK_HANDLE in response");
-            lockResult = { LOCK_HANDLE: handle };
+            const m = bodyStr.match(/<LOCK_HANDLE>(.*?)<\/LOCK_HANDLE>/);
+            return m?.[1];
+          };
+
+          // Attempt 1: use the transport extracted from the error message (workbench request)
+          log.push(`⚠️ Lock failed (object in transport ${corrNrFromErr}), retrying with corrNr=${corrNrFromErr}...`);
+          let handle: string | undefined;
+          let lastRetryErr: unknown;
+          try {
+            handle = await tryLockWithCorrNr(corrNrFromErr);
+          } catch (e1) {
+            lastRetryErr = e1;
+          }
+
+          // Attempt 2: if attempt 1 failed, look up the transport task via transportInfo
+          // (ADT sometimes requires the task number, not the workbench request number)
+          if (!handle) {
+            try {
+              const info = await client.transportInfo(objectUrl, "");
+              const tasks: Array<{ TRKORR: string }> = (info as { LOCKS?: { TASKS?: Array<{ TRKORR: string }> } })?.LOCKS?.TASKS ?? [];
+              for (const task of tasks) {
+                try {
+                  handle = await tryLockWithCorrNr(task.TRKORR);
+                  if (handle) {
+                    log.push(`✅ Lock acquired (corrNr retry with task ${task.TRKORR})`);
+                    break;
+                  }
+                } catch (e2) {
+                  lastRetryErr = e2;
+                }
+              }
+            } catch {
+              // transportInfo failed — ignore, will throw original error below
+            }
+          } else {
             log.push(`✅ Lock acquired (corrNr retry)`);
-          } catch (retryErr) {
+          }
+
+          if (!handle) {
             throw new Error(
-              `Lock failed: ${errMsg}. corrNr retry also failed: ${retryErr instanceof Error ? retryErr.message : String(retryErr)}`
+              `Lock failed: ${errMsg}. corrNr retry also failed: ${lastRetryErr instanceof Error ? lastRetryErr.message : String(lastRetryErr)}`
             );
           }
+          lockResult = { LOCK_HANDLE: handle };
         } else {
           throw lockErr;
         }
