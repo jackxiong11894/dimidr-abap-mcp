@@ -79,7 +79,7 @@ export async function handleAnalyzeAbapContext(client: ADTClient, args: Record<s
   }
 
   if (baseUrl.includes("/programs/programs/")) {
-    const includePattern = /^\s*INCLUDE\s+(\S+?)[\s.]*$/gim;
+    const includePattern = /^\s*INCLUDE\s+(\S+?)\s*(?:IF\s+FOUND\s*)?[\s.]*$/gim;
     let match;
     const resolvedIncludes: string[] = [];
     while ((match = includePattern.exec(mainText)) !== null) {
@@ -253,19 +253,20 @@ export async function handleAnalyzeAbapContext(client: ADTClient, args: Record<s
     }
   }
 
+  // Cap the *emitted* source so one analysis cannot blow up the model context.
+  // The reference analysis above always sees the full text; only the echoed
+  // source sections below are clipped against this budget.
   const MAX_ANALYZE_CHARS = 150_000;
+  let charBudget = MAX_ANALYZE_CHARS;
+  const clipSource = (text: string): string => {
+    if (charBudget <= 0) return "... (omitted — character limit reached, use read_abap_source)";
+    if (text.length <= charBudget) { charBudget -= text.length; return text; }
+    const head = text.slice(0, charBudget);
+    charBudget = 0;
+    return `${head}\n... (truncated)`;
+  };
   const combinedLength = allSourceTexts.reduce((sum, s) => sum + s.length, 0);
-  if (combinedLength > MAX_ANALYZE_CHARS) {
-    let charBudget = MAX_ANALYZE_CHARS;
-    for (let i = 0; i < allSourceTexts.length; i++) {
-      if (allSourceTexts[i].length <= charBudget) {
-        charBudget -= allSourceTexts[i].length;
-      } else {
-        allSourceTexts[i] = allSourceTexts[i].slice(0, charBudget) + "\n... (truncated)";
-        allSourceTexts.splice(i + 1);
-        break;
-      }
-    }
+  if (combinedLength > MAX_ANALYZE_CHARS && !isContract) {
     sections.push(`\n⚠️ Source code limited to ${MAX_ANALYZE_CHARS.toLocaleString()} characters (total: ${combinedLength.toLocaleString()}). Use read_abap_source for specific includes.`);
   }
 
@@ -294,11 +295,11 @@ export async function handleAnalyzeAbapContext(client: ADTClient, args: Record<s
   } else {
     sections.push(`\n📄 SOURCE CODE (Main + Includes)`);
     sections.push(`── MAIN (${baseUrl}) ──`);
-    sections.push(mainText);
+    sections.push(clipSource(mainText));
     for (const inc of includesList) {
       if (inc.source) {
         sections.push(`── ${inc.type.toUpperCase()} (${inc.uri}) ──`);
-        sections.push(inc.source);
+        sections.push(clipSource(inc.source));
       }
     }
   }

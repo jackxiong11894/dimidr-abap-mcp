@@ -71,6 +71,7 @@ export class BtpConnectivityTokenSource {
 
     const response = await fetch(tokenUrl, {
       method: "POST",
+      signal: AbortSignal.timeout(15_000),
       headers: {
         Authorization: `Basic ${basic}`,
         "Content-Type": "application/x-www-form-urlencoded",

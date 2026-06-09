@@ -54,7 +54,7 @@ npm run clean
   - `handlers/` — 20 handler modules (search, read, write, create, delete, test, quality, diagnostics, transport, abapgit, query, documentation, context, websearch, batch, meta, method, contract, analysis, intent)
 - **Helpers**: `src/helpers/` — JSON schema conversion, DDIC validation, documentation fetching, Clean ABAP analysis, method-splice (single-method surgery), contract (context compression)
 - **Cache**: `src/cache.ts` — TTL-bounded `getObjectSource` cache, invalidated on write/delete
-- **Audit**: `src/audit.ts` — structured JSON audit log of write/delete/execute (to stderr + optional file)
+- **Audit**: `src/audit.ts` — structured JSON audit log of write/delete/execute (to stderr + optional file). write/edit/delete handlers audit internally; all other mutating tools (creates, activates, abapGit pull, transport, snippet outcome) are covered by the `withAudit` wrapper in `handler-map.ts`, driven by `AUDIT_WRAPPED_TOOLS` in `tools/mutating-tools.ts` — add new mutating tools there (the derived `MUTATING_TOOL_NAMES` set also feeds the `batch_read` blocklist; a drift-guard test enforces coverage). Guard rejections log `outcome=denied`.
 - **Connection**: Lazy-initialized single `ADTClient` instance reused across all tool calls
 - **Transport**: stdio-based MCP protocol with `@modelcontextprotocol/sdk`
 

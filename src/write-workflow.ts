@@ -266,7 +266,7 @@ export async function writeWorkflow(
       return { success: true, log };
     } catch (err) {
       if (lockHandle) {
-        try { await client.unLock(objectUrl, lockHandle); log.push("🔓 Lock released after error"); }
+        try { await client.unLock(lockUrl, lockHandle); log.push("🔓 Lock released after error"); }
         catch { log.push("⚠️  Lock could not be released — dropSession in finally will clean up"); }
         lockHandle = undefined;
       }

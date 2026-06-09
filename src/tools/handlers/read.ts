@@ -66,7 +66,7 @@ export async function handleReadAbapSource(client: ADTClient, args: Record<strin
 
     // Programme: INCLUDE-Anweisungen im Quellcode auflösen
     if (baseUrl.includes("/programs/programs/")) {
-      const includePattern = /^\s*INCLUDE\s+(\S+?)[\s.]*$/gim;
+      const includePattern = /^\s*INCLUDE\s+(\S+?)\s*(?:IF\s+FOUND\s*)?[\s.]*$/gim;
       let match;
       const resolvedIncludes: string[] = [];
       while ((match = includePattern.exec(mainText)) !== null) {

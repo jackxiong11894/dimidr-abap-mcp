@@ -89,7 +89,13 @@ export async function handleCreateAbapClass(client: ADTClient, args: Record<stri
       throw createErr;
     }
   }
-  return ok(`✅ Class '${n}' created\nURI: ${url}\n\nNext steps:\n  read_abap_source → write_abap_source`);
+  // createObject cannot set a superclass — be explicit instead of silently
+  // dropping the parameter, so the caller knows to add the inheritance.
+  const superClassNote = p.superClass
+    ? `\n\n⚠️ Note: superClass='${p.superClass}' is NOT applied at creation (ADT limitation). ` +
+      `Add 'INHERITING FROM ${p.superClass.toUpperCase()}' to the class definition via write_abap_source.`
+    : "";
+  return ok(`✅ Class '${n}' created\nURI: ${url}${superClassNote}\n\nNext steps:\n  read_abap_source → write_abap_source`);
 }
 
 export async function handleCreateAbapInterface(client: ADTClient, args: Record<string, unknown>): Promise<ToolResult> {
@@ -144,7 +150,11 @@ export async function handleCreateCdsView(client: ADTClient, args: Record<string
   // The root element for DDLS/DF MUST be ddl:ddlSource (namespace http://www.sap.com/adt/ddic/ddlsources),
   // NOT blue:blueSource. S/4HANA on-premise systems additionally require the CDS source code to be
   // embedded inline as a CDATA text node of the root element.
-  const sourceBody = initialSource ? `<![CDATA[${initialSource}]]>` : "";
+  // "]]>" inside the source would terminate the CDATA section early and break
+  // the XML — split it across two CDATA sections (standard escaping technique).
+  const sourceBody = initialSource
+    ? `<![CDATA[${initialSource.replace(/\]\]>/g, "]]]]><![CDATA[>")}]]>`
+    : "";
 
   const body = [
     `<?xml version="1.0" encoding="UTF-8"?>`,

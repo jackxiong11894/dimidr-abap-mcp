@@ -17,9 +17,13 @@ export function toJsonSchema(schema: z.ZodTypeAny): object {
     }
     const desc = (t: z.ZodTypeAny) => t._def.description ? { description: t._def.description } : {};
     if (s instanceof z.ZodArray)   return { type: "array", items: c(s.element), ...desc(s) };
-    if (s instanceof z.ZodOptional) return c(s.unwrap());
-    if (s instanceof z.ZodDefault)  return c(s._def.innerType);
-    if (s instanceof z.ZodEffects)  return c(s._def.schema);
+    // Wrappers: keep converting inward, but merge the wrapper's own description
+    // — `.optional().describe(...)` / `.default(x).describe(...)` put the
+    // description on the wrapper, not the inner type.
+    if (s instanceof z.ZodOptional) return { ...c(s.unwrap()), ...desc(s) };
+    if (s instanceof z.ZodDefault)  return { ...c(s._def.innerType), ...desc(s) };
+    if (s instanceof z.ZodEffects)  return { ...c(s._def.schema), ...desc(s) };
+    if (s instanceof z.ZodRecord)   return { type: "object", ...desc(s) };
     if (s instanceof z.ZodEnum)     return { type: "string", enum: s.options, ...desc(s) };
     if (s instanceof z.ZodString)   return { type: "string", ...desc(s) };
     if (s instanceof z.ZodNumber)   return { type: "number", ...desc(s) };

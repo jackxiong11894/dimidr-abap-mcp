@@ -189,9 +189,9 @@ export const S_ValidateDdic = z.object({
 
 // --- DIAGNOSTICS ---
 export const S_GetDumps = z.object({
-  maxResults: z.number().int().min(1).max(100).default(20).optional(),
+  maxResults: z.number().int().min(1).max(100).default(20).optional()
+    .describe("Max dumps to return (default: MAX_DUMPS env, 20)"),
   user:       z.string().optional().describe("Filter by user"),
-  since:      z.string().optional().describe("Time filter ISO-8601, e.g. 2025-01-01T00:00:00Z"),
 });
 export const S_GetDumpDetail = z.object({
   dumpId: z.string().describe("Dump ID from get_short_dumps"),
@@ -232,8 +232,6 @@ export const S_ExecuteSnippet = z.object({
     "starts with REPORT or PROGRAM, ends with a period. " +
     "Output via WRITE statements. No SELECTION-SCREEN."
   ),
-  timeout: z.number().int().min(1).max(30).default(10).optional()
-    .describe("Maximum runtime in seconds (default: 10, max: 30)"),
 });
 
 // --- NEW TOOLS ---
@@ -424,7 +422,8 @@ export const S_IntentRead = z.object({
 export const S_IntentWrite = z.object({
   operation: z.string().describe(
     "What to write: source | method | activate | pretty_print | create_program | create_class | create_interface | " +
-    "create_function_group | create_cds_view | create_table | create_message_class | delete"),
+    "create_function_group | create_cds_view | create_table | create_message_class | create_metadata_extension | " +
+    "create_service_definition | create_service_binding | publish_service_binding | create_dcl | create_bdef | delete"),
   args: coerceArgsObject.describe("Arguments for the underlying tool (same shape as the granular tool)"),
 });
 export const S_IntentSearch = z.object({
@@ -462,12 +461,12 @@ export const S_AnalyzeWorkflow = z.object({
 export const S_FindTools = z.object({
   query: z.string().optional().describe("Search pattern for tool names/descriptions"),
   category: z.string().optional().describe(
-    "Category: SEARCH | READ | WRITE | CREATE | DELETE | TEST | QUALITY | DIAGNOSTICS | TRANSPORT | ABAPGIT | QUERY | DOCUMENTATION | WEBSEARCH"
+    "Category: SEARCH | READ | WRITE | CREATE | DELETE | TEST | QUALITY | DIAGNOSTICS | TRANSPORT | ABAPGIT | QUERY | DOCUMENTATION | WEBSEARCH | BATCH | ANALYSIS | INTENT"
   ),
   enable: z.boolean().optional().default(true).describe("Enable tools (default: true)"),
 });
 export const S_ListTools = z.object({
   category: z.string().optional().describe(
-    "Filter by category: SEARCH | READ | WRITE | CREATE | DELETE | TEST | QUALITY | DIAGNOSTICS | TRANSPORT | ABAPGIT | QUERY | DOCUMENTATION | WEBSEARCH. Omit for all."
+    "Filter by category: SEARCH | READ | WRITE | CREATE | DELETE | TEST | QUALITY | DIAGNOSTICS | TRANSPORT | ABAPGIT | QUERY | DOCUMENTATION | WEBSEARCH | BATCH | ANALYSIS | INTENT. Omit for all."
   ),
 });

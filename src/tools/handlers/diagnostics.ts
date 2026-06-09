@@ -6,6 +6,7 @@ import type { ADTClient } from "abap-adt-api";
 import type { ToolResult } from "../../types.js";
 import { S_GetDumps, S_GetDumpDetail, S_GetTraces, S_GetTraceDetail } from "../../schemas.js";
 import { ADT_RUNTIME_DUMPS } from "../../adt-endpoints.js";
+import { cfg } from "../../config.js";
 
 function ok(text: string): ToolResult { return { content: [{ type: "text", text }] }; }
 function err(text: string): ToolResult { return { content: [{ type: "text", text }], isError: true }; }
@@ -13,7 +14,13 @@ function err(text: string): ToolResult { return { content: [{ type: "text", text
 export async function handleGetShortDumps(client: ADTClient, args: Record<string, unknown>): Promise<ToolResult> {
   const p = S_GetDumps.parse(args);
   const res = await client.dumps(p.user);
-  return ok(JSON.stringify(res, null, 2));
+  const all = res.dumps ?? [];
+  const limit = p.maxResults ?? cfg.maxDumps;
+  const limited = all.slice(0, limit);
+  const note = all.length > limited.length
+    ? ` (showing ${limited.length} of ${all.length} — limit ${limit})`
+    : "";
+  return ok(`${limited.length} short dump(s)${note}:\n\n${JSON.stringify(limited, null, 2)}`);
 }
 
 export async function handleGetShortDumpDetail(client: ADTClient, args: Record<string, unknown>): Promise<ToolResult> {
@@ -34,7 +41,11 @@ export async function handleGetShortDumpDetail(client: ADTClient, args: Record<s
 export async function handleGetTraces(client: ADTClient, args: Record<string, unknown>): Promise<ToolResult> {
   const p = S_GetTraces.parse(args);
   const res = await client.tracesList(p.user);
-  return ok(JSON.stringify(res, null, 2));
+  const limit = p.maxResults ?? 10;
+  const allRuns = res.runs ?? [];
+  const limited = { ...res, runs: allRuns.slice(0, limit) };
+  const note = allRuns.length > limit ? ` (showing ${limit} of ${allRuns.length} runs)` : "";
+  return ok(`Traces${note}:\n\n${JSON.stringify(limited, null, 2)}`);
 }
 
 export async function handleGetTraceDetail(client: ADTClient, args: Record<string, unknown>): Promise<ToolResult> {

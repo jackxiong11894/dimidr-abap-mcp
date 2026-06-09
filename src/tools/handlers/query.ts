@@ -112,7 +112,12 @@ export async function handleExecuteAbapSnippet(client: ADTClient, args: Record<s
         return err(`❌ Syntax error(s) — code not executed:\n${msgs.join("\n")}`);
       }
 
-      await client.activate(snippetName, programUrl);
+      const activationResult = await client.activate(snippetName, programUrl);
+      if (!activationResult.success) {
+        const msgs = activationResult.messages.map(
+          (m) => `  [${m.type}] ${m.shortText}${m.line ? ` (line ${m.line})` : ""}`);
+        return err(`❌ Activation failed — code not executed:\n${msgs.join("\n")}`);
+      }
 
       const runResp = await client.httpClient.request(
         `${programUrl}/runs`, {

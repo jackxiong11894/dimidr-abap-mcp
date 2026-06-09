@@ -69,7 +69,7 @@ export const CLEAN_ABAP_RULES: CleanAbapRule[] = [
     multiline: true },
   // Methods
   { id: "CHECK_IN_METHOD",
-    pattern: /\bMETHOD\b[\s\S]*?\bCHECK\b/,
+    pattern: /\bMETHOD\b[\s\S]*?\bCHECK\b/i,
     message: "CHECK statement inside METHOD body. Use IF ... RETURN instead.",
     guidelineQuery: "CHECK RETURN method early exit",
     category: "Methods",

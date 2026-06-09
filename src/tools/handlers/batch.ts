@@ -8,33 +8,22 @@ import type { ADTClient } from "abap-adt-api";
 import type { ToolResult, ToolHandler } from "../../types.js";
 import { S_BatchRead } from "../../schemas.js";
 import { HANDLER_MAP } from "../handler-map.js";
+import { MUTATING_TOOL_NAMES } from "../mutating-tools.js";
 
 function ok(text: string): ToolResult { return { content: [{ type: "text", text }] }; }
 function err(text: string): ToolResult { return { content: [{ type: "text", text }], isError: true }; }
 
-/** Tools that are NEVER allowed in batch_read (mutating operations) */
+/**
+ * Tools that are NEVER allowed in batch_read. Every mutating tool (derived
+ * from mutating-tools.ts so the list cannot drift when tools are added) plus
+ * a few non-mutating exclusions.
+ */
 const BLOCKED_TOOLS = new Set([
-  "write_abap_source",
-  "edit_abap_method",
-  "SAPWrite",
-  "activate_abap_object",
-  "mass_activate",
-  "pretty_print",
-  "create_abap_program",
-  "create_abap_class",
-  "create_abap_interface",
-  "create_function_group",
-  "create_cds_view",
-  "create_database_table",
-  "create_message_class",
-  "delete_abap_object",
-  "create_test_include",
-  "create_transport",
-  "abapgit_pull",
-  "execute_abap_snippet",
-  "find_tools",
-  "list_tools",
-  "batch_read",
+  ...MUTATING_TOOL_NAMES,
+  "pretty_print", // backend formatter call — not a read, pointless in a batch
+  "find_tools",   // mutates the visible tool list
+  "list_tools",   // meta — call directly
+  "batch_read",   // no recursion
 ]);
 
 export async function handleBatchRead(

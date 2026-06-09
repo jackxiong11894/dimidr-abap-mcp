@@ -2,6 +2,254 @@
 
 ---
 
+## 2026-06-09 — Scan Runde 6: Stillschweigend ignorierte Parameter & Schema-Lücken
+
+### Bugfix-Cluster: Tool-Parameter, die akzeptiert aber nie ausgewertet wurden
+
+Vollständiger Review von `schemas.ts` gegen die Handler deckte fünf Parameter auf,
+die das Schema dokumentierte, die aber wirkungslos waren:
+
+1. **`get_short_dumps.maxResults`** — ignoriert. Jetzt: `maxResults` hat Vorrang
+   vor `MAX_DUMPS` (env-Default).
+2. **`get_short_dumps.since`** — Zeitfilter ohne Implementierung; die Dump-Feed-
+   Einträge der abap-adt-api tragen keinen Zeitstempel, clientseitig nicht
+   implementierbar → Parameter entfernt (Zod strippt unbekannte Keys, alte
+   Aufrufer bleiben kompatibel).
+3. **`get_traces.maxResults`** — ignoriert, Trace-Liste unbegrenzt. Jetzt: `runs`
+   wird auf das Limit (Default 10) gekürzt, mit Hinweis im Output.
+4. **`create_abap_class.superClass`** — akzeptiert und stillschweigend verworfen
+   (ADT-Create kann keine Superklasse setzen). Jetzt: expliziter Hinweis im
+   Output, dass `INHERITING FROM` per `write_abap_source` nachgezogen werden muss.
+5. **`execute_abap_snippet.timeout`** — versprach eine Laufzeitbegrenzung, die nie
+   durchgesetzt wurde → Parameter entfernt (inkl. internem Aufruf in `workflow.ts`).
+
+### Schema-Beschreibungen vervollständigt
+
+- **`SAPWrite.operation`** (Kern-Tool!) listete nur 12 von 18 unterstützten
+  Operationen — `create_metadata_extension`, `create_service_definition`,
+  `create_service_binding`, `publish_service_binding`, `create_dcl`, `create_bdef`
+  waren für Clients unauffindbar. Liste vervollständigt.
+- **`find_tools`/`list_tools`** Kategorie-Beschreibung um `BATCH | ANALYSIS | INTENT` ergänzt.
+
+### Konsistenz-Audit (programmatisch, ohne Befund)
+
+Registry-Quervergleich: jede Tool-Definition hat einen Handler und umgekehrt,
+alle Kategorie-Einträge existieren, `TOOL_SHORT_DESCRIPTIONS` vollständig ohne
+Waisen, Intent-Maps zeigen auf registrierte Handler, `MODULE_BEST_PRACTICES`-Keys
+decken das Schema-Enum exakt ab. Ebenfalls geprüft ohne Befund: `adt-endpoints.ts`,
+`btp/credentials.ts` (vorbildliche cf-Fehlerdiagnose), `btp/index.ts`,
+`saprouter.ts` (NI-Paketaufbau).
+
+**Geänderte Dateien:**
+- `src/schemas.ts` — Parameter entfernt/ergänzt, Beschreibungen vervollständigt
+- `src/tools/handlers/diagnostics.ts` — maxResults für Dumps & Traces wirksam
+- `src/tools/handlers/create.ts` — superClass-Hinweis
+- `src/tools/handlers/workflow.ts` — toten `timeout`-Parameter entfernt
+
+---
+
+## 2026-06-09 — Scan Runde 5: `analyze_workflow` SQL-Literale & Sprach-Hardcoding
+
+### Bugfix: Unescaptes User-Input in den Workflow-SQL-Abfragen
+
+**Problem:** `workflowId`, `user` und `status` wurden unverändert in die
+SELECT-Statements interpoliert (`WHERE WI_AAGENT = '${p.user}'`). Ein Wert mit
+Hochkomma erzeugte ein kaputtes Statement mit verwirrendem Backend-Fehler. Das
+Data-Preview-Backend ist read-only, daher kein Mutations-Risiko — aber ein
+Korrektheits-/Robustheitsproblem.
+
+**Fix:** Neuer Helper `sqlLit()` (ABAP-SQL-Literal-Escaping per `''`-Verdopplung),
+angewendet auf alle interpolierten Parameter in allen fünf Modi.
+
+### Bugfix: Workflow-Knotentexte hart auf Deutsch (`LANGU = 'D'`)
+
+**Problem:** `mode='graph'` las die Knotenbeschreibungen aus SWD_NODET mit fest
+verdrahtetem `LANGU = 'D'` — auf EN-Systemen (Default `SAP_LANGUAGE=EN`) blieben
+alle Beschreibungen leer.
+
+**Fix:** Sprachschlüssel wird aus `cfg.language` abgeleitet (EN → E, DE → D).
+
+**Geprüft ohne Befund:** `workflow.ts` übrige Logik (sauberes `safeQuery`-Muster,
+durchdachte Mermaid-Generierung), `documentation.ts`-Handler (eine kosmetische
+Redundanz im „local/GitHub"-Label), `btp/agent.ts` (Header-Callback liest Token
+live — korrekt), `saprouter.ts` (NI-Frame-Reader mit Cleanup/Leftover-Unshift —
+vorbildlich), Rest von `clean-abap.ts` und `prompt.ts` (alle referenzierten
+Tool-Namen existieren).
+
+**Geänderte Dateien:**
+- `src/tools/handlers/workflow.ts` — `sqlLit()`-Escaping + `LANGU` aus `cfg.language`
+
+---
+
+## 2026-06-09 — Scan Runde 4: CDATA-Escaping, Token-Timeout & Clean-ABAP-Regel
+
+### Bugfix: `create_cds_view` — `]]>` im CDS-Source brach das Create-XML
+
+**Problem:** Der initiale CDS-Source wurde unescaped in eine CDATA-Sektion eingebettet
+(`<![CDATA[${source}]]>`). Enthielt der Source die Zeichenfolge `]]>` (z.B. in einem
+String/Kommentar), endete die CDATA-Sektion vorzeitig → malformed XML → verwirrender
+ADT-Fehler.
+
+**Fix:** Standard-CDATA-Escaping — `]]>` wird auf zwei CDATA-Sektionen aufgeteilt
+(`]]]]><![CDATA[>`).
+
+### Bugfix: XSUAA-Token-Request ohne Timeout
+
+**Problem:** `btp/token.ts` war der einzige Netzwerk-Call im Codebase ohne Timeout —
+ein hängender XSUAA-Endpunkt blockierte den ersten Login (und Hintergrund-Refreshes)
+unbegrenzt.
+
+**Fix:** `AbortSignal.timeout(15_000)` wie bei allen übrigen fetch-Aufrufen.
+
+### Bugfix: Clean-ABAP-Regel `CHECK_IN_METHOD` war case-sensitiv
+
+**Problem:** Als einzige der 11 Regeln fehlte das `/i`-Flag — kleingeschriebenes ABAP
+(`method … check …`) wurde nie geflaggt, obwohl ABAP case-insensitiv ist.
+
+**Fix:** `/i`-Flag ergänzt (konsistent mit allen anderen Regeln).
+
+**Geprüft ohne Befund:** `create.ts` (alle übrigen Handler — Guards vollständig,
+False-Success-Verifikation via `objectStructure`, durchdachte Workarounds für
+abap-adt-api-Lücken), `helpers/documentation.ts`, `helpers/ddic-validation.ts`
+(Parsing-Teil), `helpers/clean-abap.ts` (übrige Regeln + Laden), `btp/token.ts`
+(In-Flight-Dedup, Refresh-Skew, `unref` — sauber), `btp/credentials.ts`,
+`saprouter-agent.ts`, `prompt.ts`, `schemas.ts` (Constraints konsistent).
+
+**Geänderte Dateien:**
+- `src/tools/handlers/create.ts` — CDATA-Escaping
+- `src/btp/token.ts` — Timeout
+- `src/helpers/clean-abap.ts` — `/i`-Flag
+
+---
+
+## 2026-06-09 — Scan Runde 3: Schema-Beschreibungen, Kontext-Limit & MAX_DUMPS
+
+### Bugfix: Parameter-Beschreibungen fehlten für alle optionalen Tool-Parameter
+
+**Problem:** Der Zod→JSON-Schema-Konverter (`helpers/json-schema.ts`) verwarf bei
+`ZodOptional`/`ZodDefault`/`ZodEffects` die Beschreibung des Wrappers. Da fast alle
+Schemas das Muster `z.string().optional().describe(…)` nutzen, sahen MCP-Clients für
+die meisten optionalen Parameter (z.B. `transport`, `activateAfterWrite`,
+`skipSyntaxCheck`) **keine** Beschreibung. Zusätzlich war `z.record` (→ `batch_read.args`)
+gar nicht behandelt und wurde als leeres Schema `{}` ausgegeben.
+
+**Fix:** Wrapper-Beschreibungen werden beim Abstieg gemerged (äußere gewinnt);
+`ZodRecord` → `{ type: "object" }`. Neue Tests: `test/json-schema.test.ts`.
+
+### Bugfix: 150k-Zeichen-Limit von `analyze_abap_context` war wirkungslos
+
+**Problem:** Die Trunkierung kürzte das Array `allSourceTexts`, die Ausgabe wurde aber
+danach aus den ungekürzten Originalen (`mainText`, `inc.source`) gebaut — toter Code.
+Die Warnung „Source code limited to 150.000 characters" erschien, der Output war
+trotzdem unbegrenzt (Token-Explosion bei großen Objekten).
+
+**Fix:** Budget wird jetzt bei der Ausgabe angewendet (`clipSource()` mit laufendem
+Zeichen-Budget); die Referenz-Analyse sieht weiterhin den vollen Text.
+
+### Bugfix: `MAX_DUMPS` war tote Konfiguration
+
+**Problem:** `cfg.maxDumps` (dokumentiert in CLAUDE.md/.env.example/DOCUMENTATION.md)
+wurde nirgends verwendet — `get_short_dumps` gab den kompletten Dump-Feed unbegrenzt
+zurück.
+
+**Fix:** `get_short_dumps` begrenzt jetzt auf `MAX_DUMPS` (Default 20) und weist im
+Output auf die Limitierung hin.
+
+### Kleinfix: `INCLUDE … IF FOUND.` wurde nicht aufgelöst
+
+Die INCLUDE-Erkennung in `read_abap_source` (includeRelated) und
+`analyze_abap_context` übersprang Includes mit `IF FOUND`-Zusatz. Regex erweitert.
+
+**Geprüft ohne Befund:** `analysis.ts` (BFS korrekt begrenzt), `meta.ts`, `resolve.ts`,
+`search.ts` (XML-Parsing funktional, Attributreihenfolge-abhängig — Hinweis),
+`diagnostics.ts` (übrige Handler), `transport.ts`, `abapgit.ts`, `test.ts`,
+`workflow.ts` (sauberes `safeQuery`-Muster), `helpers/documentation.ts` (Timeout
+vorhanden), `contract.ts`.
+
+**Geänderte Dateien:**
+- `src/helpers/json-schema.ts`, `test/json-schema.test.ts` (neu)
+- `src/tools/handlers/context.ts` — wirksames Zeichen-Budget + INCLUDE-Regex
+- `src/tools/handlers/read.ts` — INCLUDE-Regex
+- `src/tools/handlers/diagnostics.ts` — MAX_DUMPS angewendet
+
+---
+
+## 2026-06-09 — Scan Runde 2: `batch_read` Read-Only-Contract repariert
+
+### Security-Fix: `batch_read` ließ sechs mutierende Tools durch
+
+**Problem:** Die `BLOCKED_TOOLS`-Denyliste in `batch.ts` war beim Hinzufügen neuer Tools
+nicht mitgepflegt worden. Nicht blockiert waren: `publish_service_binding`,
+`create_cds_metadata_extension`, `create_service_definition`, `create_service_binding`,
+`create_data_control_language`, `create_behavior_definition`. Bei `ALLOW_WRITE=true`
+konnte ein Client, der `batch_read` als „read-only" auto-approved (z.B. Cline-
+`autoApprove`), darüber Objekte anlegen oder OData-Endpoints publizieren. Die
+serverseitigen Guards (Flags/Rolle/Audit) griffen weiterhin — gebrochen war der
+Read-only-Vertrag des Tools gegenüber clientseitigen Permission-Modellen.
+
+**Fix:** Neue Single-Source-of-Truth `src/tools/mutating-tools.ts`:
+- `AUDIT_WRAPPED_TOOLS` — speist den `withAudit`-Wrapper in `handler-map.ts`
+- `MUTATING_TOOL_NAMES` (abgeleitet, inkl. `SAPWrite` + selbst-auditierende Handler) —
+  speist die `batch_read`-Blockliste
+- Eigenes Modul, weil `batch.ts` ↔ `handler-map.ts` bereits einen Import-Zyklus bilden
+- Neuer Drift-Guard-Test `test/mutating-tools.test.ts`: prüft die Liste gegen die
+  WRITE/CREATE/DELETE-Tool-Kategorien — ein vergessenes neues Tool lässt den Test fehlschlagen
+
+**Geprüft ohne Befund:** `method-splice.ts` (Limitationen dokumentiert + getestet),
+`adt-client.ts` (Session-/Agent-Handling sauber), `create.ts` (XML via `encXml()`
+escaped), `btp/*` (keine Secrets in Logs).
+
+**Geänderte Dateien:**
+- `src/tools/mutating-tools.ts` (neu), `src/tools/handlers/batch.ts`,
+  `src/tools/handler-map.ts`, `test/mutating-tools.test.ts` (neu)
+- `DOCUMENTATION.md`, `CLAUDE.md` — Read-only-Garantie & Wartungshinweis dokumentiert
+
+---
+
+## 2026-06-09 — Targeted Scan: Write-Workflow, Snippet-Executor & Audit-Abdeckung
+
+### Bugfix: Unlock im Fehlerpfad des Write-Workflows nutzte falsche URL
+
+**Problem:** Im Fehlerpfad von `writeWorkflow` (`write-workflow.ts`) wurde
+`client.unLock(objectUrl, …)` aufgerufen — der Lock wurde aber auf `lockUrl` gesetzt
+(bei Klassen-Includes die Eltern-Klasse). Schlug ein Write auf ein Klassen-Include fehl,
+zielte der Unlock auf die falsche URL, scheiterte immer und verließ sich stillschweigend
+auf das `dropSession`-Cleanup.
+
+**Fix:** Fehlerpfad nutzt jetzt `lockUrl` — konsistent mit dem Happy-Path.
+
+### Bugfix: `execute_abap_snippet` ignorierte das Aktivierungsergebnis
+
+**Problem:** `client.activate()` wurde aufgerufen, ohne `success` zu prüfen. Schlug die
+Aktivierung fehl (Nicht-Syntax-Grund), wurde der `/runs`-POST trotzdem abgesetzt —
+das Snippet lief in einer alten/inaktiven Version oder lieferte verwirrende Ausgaben.
+
+**Fix:** Aktivierungsergebnis wird geprüft; bei Fehlschlag bricht das Tool mit den
+Aktivierungsmeldungen ab („Activation failed — code not executed").
+
+### Governance: Audit-Abdeckung jetzt vollständig
+
+**Problem:** `audit.ts` versprach „every state-changing action is recorded", aber nur 4
+von ~20 mutierenden Handlern riefen `audit()` auf. Nicht auditiert: alle 13 `create_*`,
+`activate_abap_object`, `mass_activate`, `publish_service_binding`, `create_test_include`,
+`create_transport`, `abapgit_pull`; `execute_abap_snippet` loggte nur „attempt" ohne Ausgang.
+
+**Fix:** Neuer `withAudit`-Wrapper in `handler-map.ts`: die fehlenden mutierenden Tools
+werden zentral an der Dispatch-Map dekoriert (`AUDITED_TOOLS`-Liste) — ein Ort, kein
+Drift, und die Intent-Facade (`SAPWrite` → `create_*`) erbt die Abdeckung automatisch.
+Safety-Guard-Ablehnungen (ALLOW_*-Flags, Rolle, BLOCKED_PACKAGES, Namespace) werden als
+`outcome=denied` protokolliert (bisher ungenutzter Outcome-Wert), Fehler mit
+`detail`-Auszug. `write_abap_source`/`edit_abap_method`/`delete_abap_object` auditieren
+weiterhin in ihren Handlern (Phasen-Detail), um Doppel-Einträge zu vermeiden.
+
+**Geänderte Dateien:**
+- `src/write-workflow.ts` — Unlock im Fehlerpfad auf `lockUrl` korrigiert
+- `src/tools/handlers/query.ts` — Aktivierungsergebnis-Prüfung vor `/runs`
+- `src/tools/handler-map.ts` — `withAudit`-Wrapper + `AUDITED_TOOLS`
+- `DOCUMENTATION.md`, `CLAUDE.md` — Audit-Abdeckung dokumentiert
+
+---
+
 ## 2026-06-09 — Qualitäts-Review der Web-Search-Implementierung (fetch_url)
 
 ### Bugfix: `validate_ddic_references` lieferte ohne ADT-Verbindung stillschweigend falsche Ergebnisse

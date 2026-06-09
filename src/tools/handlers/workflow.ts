@@ -21,6 +21,16 @@ import { cfg } from "../../config.js";
 function ok(text: string): ToolResult { return { content: [{ type: "text", text }] }; }
 function err(text: string): ToolResult { return { content: [{ type: "text", text }], isError: true }; }
 
+/**
+ * Escape a value for use inside an ABAP SQL string literal ('' doubling).
+ * The data-preview backend is read-only, so this is about producing correct
+ * queries (and clear errors) for values containing quotes, not about
+ * preventing data mutation.
+ */
+function sqlLit(s: string): string {
+  return s.replace(/'/g, "''");
+}
+
 /** Run a SELECT via ADT and catch errors so one failing query doesn't break the whole response. */
 async function safeQuery(
   client: ADTClient,
@@ -154,7 +164,7 @@ export async function handleAnalyzeWorkflow(
 
       if (p.workflowId) {
         // WI_RH_TASK contains the task ID (e.g. WS90000001)
-        conditions.push(`WI_RH_TASK LIKE '%${p.workflowId.toUpperCase()}%'`);
+        conditions.push(`WI_RH_TASK LIKE '%${sqlLit(p.workflowId.toUpperCase())}%'`);
       }
       if (p.status && p.status !== "all") {
         // WI_STAT contains status as text (READY, STARTED, COMPLETED, ERROR, etc.)
@@ -162,11 +172,11 @@ export async function handleAnalyzeWorkflow(
           READY: "READY", STARTED: "STARTED", COMPLETED: "COMPLETED", ERROR: "ERROR",
         };
         const statusValue = statusMap[p.status.toUpperCase()] ?? p.status.toUpperCase();
-        conditions.push(`WI_STAT = '${statusValue}'`);
+        conditions.push(`WI_STAT = '${sqlLit(statusValue)}'`);
       }
       if (p.user) {
         // WI_AAGENT contains the actual agent (user)
-        conditions.push(`WI_AAGENT = '${p.user.toUpperCase()}'`);
+        conditions.push(`WI_AAGENT = '${sqlLit(p.user.toUpperCase())}'`);
       }
 
       const where = conditions.length > 0 ? ` WHERE ${conditions.join(" AND ")}` : "";
@@ -194,7 +204,7 @@ export async function handleAnalyzeWorkflow(
       if (!p.workflowId) {
         return err("❌ workflowId is required for mode='steps'. Example: workflowId='WS12300111'");
       }
-      const wfId = p.workflowId.toUpperCase();
+      const wfId = sqlLit(p.workflowId.toUpperCase());
 
       const [flex, classic, contDef] = await Promise.all([
         safeQuery(client, `SELECT * FROM SWF_FLEX_STEP UP TO ${max} ROWS WHERE WFTYPEID = '${wfId}'`),
@@ -249,7 +259,7 @@ export async function handleAnalyzeWorkflow(
           // Dynamic import avoids circular dependency: handler-map → workflow → handler-map
           const { handleExecuteAbapSnippet } = await import("./query.js");
           const snippet = buildSwddStepsSnippet(wfId);
-          const result = await handleExecuteAbapSnippet(client, { source: snippet, timeout: 15 });
+          const result = await handleExecuteAbapSnippet(client, { source: snippet });
           const text = result.content[0]?.type === "text" ? result.content[0].text : String(result.content);
           parts.push(text);
         } catch (e) {
@@ -272,7 +282,7 @@ export async function handleAnalyzeWorkflow(
       if (!p.workflowId) {
         return err("❌ workflowId is required for mode='agents'. Example: workflowId='WS12300111'");
       }
-      const wfId = p.workflowId.toUpperCase();
+      const wfId = sqlLit(p.workflowId.toUpperCase());
 
       const [roles, userWi] = await Promise.all([
         safeQuery(
@@ -325,7 +335,7 @@ export async function handleAnalyzeWorkflow(
       if (!p.workflowId) {
         return err("❌ workflowId is required for mode='graph'. Example: workflowId='WS90000001'");
       }
-      const wfId = p.workflowId.toUpperCase();
+      const wfId = sqlLit(p.workflowId.toUpperCase());
 
       // Query all relevant tables in parallel for the workflow graph
       const [header, nodes, lines, steps, container, nodeTexts] = await Promise.all([
@@ -364,11 +374,12 @@ export async function handleAnalyzeWorkflow(
           `SELECT ELEMENT, REFTYPE, REFSTRUCT, REFFIELD, REFOBJTYPE, ELEMTYPE, TABELEM ` +
           `FROM SWD_WFCONT WHERE WFD_ID = '${wfId}' AND EXETYP = 'P' UP TO ${max} ROWS`,
         ),
-        // Node texts (descriptions) from SWD_NODET if available
+        // Node texts (descriptions) from SWD_NODET in the configured logon
+        // language (SAP 1-char key: EN -> E, DE -> D, ...).
         safeQuery(
           client,
           `SELECT NODEID, DESCRIPT FROM SWD_NODET WHERE WFD_ID = '${wfId}' AND EXETYP = 'P' ` +
-          `AND LANGU = 'D' UP TO ${max} ROWS`,
+          `AND LANGU = '${(cfg.language.charAt(0) || "E").toUpperCase()}' UP TO ${max} ROWS`,
         ),
       ]);
 

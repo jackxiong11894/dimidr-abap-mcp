@@ -3,7 +3,11 @@
  * Maps tool names to their handler functions, replacing the monolithic switch.
  */
 
+import { McpError } from "@modelcontextprotocol/sdk/types.js";
+
 import type { ToolHandler } from "../types.js";
+import { audit, type AuditEvent } from "../audit.js";
+import { AUDIT_WRAPPED_TOOLS } from "./mutating-tools.js";
 
 // ── Handler imports ─────────────────────────────────────────────────────────
 import { handleSearchAbapObjects, handleSearchSourceCode } from "./handlers/search.js";
@@ -161,3 +165,49 @@ export const HANDLER_MAP: Map<string, ToolHandler> = new Map([
   ["find_tools",              handleFindTools],
   ["list_tools",              handleListTools],
 ]);
+
+// ── Audit wrapper ────────────────────────────────────────────────────────────
+// write_abap_source, edit_abap_method and delete_abap_object audit inside
+// their handlers (they need per-phase detail); every other mutating tool —
+// listed in mutating-tools.ts — is wrapped here at the dispatch map so the
+// trail cannot drift when tools are added. The intent facade dispatches
+// through HANDLER_MAP and therefore inherits the wrapped handlers
+// automatically. execute_abap_snippet is wrapped for its final outcome line
+// (the handler itself only logs the attempt).
+
+/** Best-effort target extraction from the raw tool arguments. */
+function targetFrom(args: Record<string, unknown>): string | undefined {
+  for (const key of ["objectUrl", "name", "objectName", "classUrl", "repoId"]) {
+    const v = args[key];
+    if (typeof v === "string" && v) return v;
+  }
+  return undefined;
+}
+
+function withAudit(tool: string, action: AuditEvent["action"], handler: ToolHandler): ToolHandler {
+  return async (client, args, extra) => {
+    const target = targetFrom(args ?? {});
+    try {
+      const res = await handler(client, args, extra);
+      audit({
+        tool, action, target,
+        outcome: res.isError ? "error" : "success",
+        detail: res.isError ? res.content[0]?.text.slice(0, 200) : undefined,
+      });
+      return res;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      // Safety-guard rejections (ALLOW_* flags, role, blocked package,
+      // namespace) are "denied"; everything else is a genuine error.
+      const denied = e instanceof McpError &&
+        /is disabled|not permitted|is blocked|must start with/i.test(msg);
+      audit({ tool, action, target, outcome: denied ? "denied" : "error", detail: msg.slice(0, 200) });
+      throw e;
+    }
+  };
+}
+
+for (const [tool, action] of AUDIT_WRAPPED_TOOLS) {
+  const h = HANDLER_MAP.get(tool);
+  if (h) HANDLER_MAP.set(tool, withAudit(tool, action, h));
+}

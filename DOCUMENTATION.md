@@ -1786,6 +1786,10 @@ batch_read: 3 operations, 3 OK, 0 errors
 - Als **Kern-Tool** registriert — immer verfügbar, kein `find_tools` nötig
 - Fehlertoleranz: Einzelne fehlgeschlagene Operationen stoppen nicht den gesamten Batch
 - ADT hat keine native Batch-API — die Parallelisierung erfolgt im Node.js MCP Server
+- **Read-only-Garantie:** Alle mutierenden Tools (write/edit/create/delete/activate/publish/
+  abapGit/execute, inkl. `SAPWrite`) sind blockiert. Die Blockliste wird aus
+  `tools/mutating-tools.ts` abgeleitet und per Unit-Test gegen die Tool-Kategorien geprüft —
+  neue mutierende Tools sind automatisch abgedeckt
 
 ---
 
@@ -1897,6 +1901,14 @@ alle Safety-Guards/Audit bleiben aktiv. **Kern-Tools.**
 JSON-Zeile protokolliert — immer nach **STDERR** (Präfix `AUDIT `, nie STDOUT = MCP-Kanal)
 und optional zusätzlich in die angegebene Datei. Felder: `ts`, `instance`, `user`, `role`,
 `tool`, `action`, `target`, `outcome`, `detail`.
+
+Abgedeckt sind **alle** mutierenden Tools: `write_abap_source`, `edit_abap_method` und
+`delete_abap_object` auditieren in ihren Handlern (mit Phasen-Detail); alle übrigen
+(`create_*`, `activate_abap_object`, `mass_activate`, `publish_service_binding`,
+`create_test_include`, `create_transport`, `abapgit_pull`, `execute_abap_snippet`) werden
+zentral über einen Audit-Wrapper in `handler-map.ts` erfasst — auch bei Aufruf über die
+Intent-Facade (`SAPWrite` etc.). `outcome=denied` kennzeichnet Ablehnungen durch
+Safety-Guards (ALLOW_*-Flags, Rolle, BLOCKED_PACKAGES, Namespace).
 
 **Source-Cache (`SOURCE_CACHE_TTL_MS`):** TTL-Cache für `getObjectSource` (Default 30 s,
 `0` = aus). Writes/Deletes invalidieren automatisch — nie veralteter Quelltext nach einer Mutation.
