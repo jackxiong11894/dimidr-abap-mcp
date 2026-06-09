@@ -1,12 +1,13 @@
 /**
- * WEBSEARCH tool handler: search_sap_web
- * Searches SAP Help, SAP Community and SAP Notes via Tavily Search API.
+ * WEBSEARCH tool handlers: fetch_url, search_sap_web
+ * - fetch_url: Extracts readable content from a URL via Tavily Extract API.
+ * - search_sap_web: Searches SAP Help, SAP Community and SAP Notes via Tavily Search API.
  * Returns compact results (title + URL + snippet) to minimize token usage.
  */
 
 import type { ADTClient } from "abap-adt-api";
 import type { ToolResult } from "../../types.js";
-import { S_SearchSapWeb } from "../../schemas.js";
+import { S_FetchUrl, S_SearchSapWeb } from "../../schemas.js";
 import { cfg } from "../../config.js";
 
 function ok(text: string): ToolResult { return { content: [{ type: "text", text }] }; }
@@ -73,6 +74,103 @@ function formatResults(source: string, items: TavilyResult[]): string {
   );
   return `### ${SOURCE_LABELS[source]} (${items.length} Treffer)\n\n${lines.join("\n\n")}`;
 }
+
+// ── fetch_url handler ─────────────────────────────────────────────────────────
+
+interface TavilyExtractResult {
+  url: string;
+  raw_content: string;
+}
+
+interface TavilyExtractResponse {
+  results: TavilyExtractResult[];
+  failed_results?: { url: string; error: string }[];
+}
+
+export async function handleFetchUrl(_client: ADTClient, args: Record<string, unknown>): Promise<ToolResult> {
+  if (!cfg.tavilyApiKey) {
+    return err(
+      "Tavily API nicht konfiguriert. " +
+      "Bitte TAVILY_API_KEY in der .env setzen.\n" +
+      "Setup: https://tavily.com/ → Sign up → API Key kopieren.\n" +
+      "Free Tier: 1000 Searches/Monat."
+    );
+  }
+
+  const p = S_FetchUrl.parse(args);
+  const maxLen = 15000;
+
+  // Strategy 1: Try Tavily Extract API first
+  try {
+    const resp = await fetch("https://api.tavily.com/extract", {
+      method: "POST",
+      signal: AbortSignal.timeout(30_000),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        api_key: cfg.tavilyApiKey,
+        urls: [p.url],
+      }),
+    });
+
+    if (resp.ok) {
+      const data = (await resp.json()) as TavilyExtractResponse;
+      if (data.results && data.results.length > 0) {
+        const content = data.results[0].raw_content;
+        if (content && content.trim().length > 0) {
+          const truncated = content.length > maxLen
+            ? content.slice(0, maxLen) + `\n\n--- [Inhalt gekürzt: ${content.length} → ${maxLen} Zeichen] ---`
+            : content;
+          return ok(`# Inhalt von: ${p.url}\n\n${truncated}`);
+        }
+      }
+    }
+  } catch { /* Extract failed, try fallback */ }
+
+  // Strategy 2: Fallback — use Tavily Search with URL as query + include_raw_content
+  try {
+    const domain = new URL(p.url).hostname;
+    const resp = await fetch("https://api.tavily.com/search", {
+      method: "POST",
+      signal: AbortSignal.timeout(20_000),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        api_key: cfg.tavilyApiKey,
+        query: p.url,
+        max_results: 3,
+        include_domains: [domain],
+        search_depth: "advanced",
+        include_raw_content: true,
+      }),
+    });
+
+    if (resp.ok) {
+      const data = (await resp.json()) as { results: Array<{ url: string; title: string; raw_content?: string; content: string }> };
+      // Find the exact URL match or best match
+      const exact = data.results?.find(r => r.url === p.url || r.url.includes(p.url.split("?")[0]));
+      const best = exact ?? data.results?.[0];
+      if (best) {
+        const content = best.raw_content || best.content;
+        if (content && content.trim().length > 0) {
+          const truncated = content.length > maxLen
+            ? content.slice(0, maxLen) + `\n\n--- [Inhalt gekürzt: ${content.length} → ${maxLen} Zeichen] ---`
+            : content;
+          return ok(`# Inhalt von: ${best.url}\n**${best.title}**\n\n${truncated}`);
+        }
+      }
+    }
+  } catch { /* Search fallback also failed */ }
+
+  return err(
+    `URL konnte nicht gelesen werden: ${p.url}\n\n` +
+    `Mögliche Ursachen:\n` +
+    `- Die Seite blockiert automatisierte Zugriffe\n` +
+    `- Die Seite benötigt JavaScript-Rendering das nicht unterstützt wird\n` +
+    `- Netzwerkfehler\n\n` +
+    `Tipp: Versuche search_sap_web mit relevanten Suchbegriffen statt der direkten URL.`
+  );
+}
+
+// ── search_sap_web handler ────────────────────────────────────────────────────
 
 export async function handleSearchSapWeb(_client: ADTClient, args: Record<string, unknown>): Promise<ToolResult> {
   if (!cfg.tavilyApiKey) {

@@ -45,7 +45,7 @@ import {
   handleGetModuleBestPractices, handleSearchCleanAbap, handleSearchAbapSyntax,
 } from "./handlers/documentation.js";
 import { handleAnalyzeAbapContext } from "./handlers/context.js";
-import { handleSearchSapWeb } from "./handlers/websearch.js";
+import { handleFetchUrl, handleSearchSapWeb } from "./handlers/websearch.js";
 import { handleBatchRead } from "./handlers/batch.js";
 import { handleFindTools, handleListTools } from "./handlers/meta.js";
 import { handleReadAbapMethod, handleEditAbapMethod } from "./handlers/method.js";
@@ -141,6 +141,7 @@ export const HANDLER_MAP: Map<string, ToolHandler> = new Map([
   ["analyze_abap_context",    handleAnalyzeAbapContext],
 
   // WEBSEARCH
+  ["fetch_url",               handleFetchUrl],
   ["search_sap_web",          handleSearchSapWeb],
 
   // BATCH

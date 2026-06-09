@@ -339,6 +339,14 @@ export const S_BatchRead = z.object({
   })).min(1).max(20).describe("List of operations to execute in parallel (1–20)"),
 });
 
+// --- WEB FETCH ---
+export const S_FetchUrl = z.object({
+  url: z.string().url().describe(
+    "URL to fetch and extract readable content from (e.g. 'https://help.sap.com/docs/...'). " +
+    "Works with JavaScript-rendered pages (SPAs) like SAP Help Portal."
+  ),
+});
+
 // --- WEB SEARCH ---
 export const S_SearchSapWeb = z.object({
   query: z.string().describe(

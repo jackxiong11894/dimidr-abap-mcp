@@ -257,6 +257,12 @@ export const TOOLS: ToolDef[] = [
     schema: S.S_ReviewCleanAbap },
 
   // ── WEBSEARCH ──────────────────────────────────────────────────────────
+  { name: "fetch_url",
+    description: "Fetches and extracts readable content from a URL. Works with JavaScript-rendered pages (SPAs) like SAP Help Portal, " +
+      "SAP Community blogs, SAP Notes, or any web page. Returns the extracted text content. " +
+      "Use when you need to read the actual content of a specific URL (not search). " +
+      "Requires TAVILY_API_KEY in .env.",
+    schema: S.S_FetchUrl },
   { name: "search_sap_web",
     description: "Searches SAP Help (help.sap.com), SAP Community (community.sap.com) and SAP Notes (me.sap.com) via Tavily Search API. " +
       "Returns compact results (title + URL + snippet) to minimize token usage. " +

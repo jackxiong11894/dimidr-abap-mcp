@@ -78,9 +78,22 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
 
 // ── CALL TOOL ───────────────────────────────────────────────────────────────
 
+// Tools that do NOT require an ADT connection (pure web/local tools)
+const NO_ADT_TOOLS = new Set([
+  "fetch_url",
+  "search_sap_web",
+  "review_clean_abap",
+  "search_clean_abap",
+  "validate_ddic_references",
+  "find_tools",
+  "list_tools",
+]);
+
 server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
   const { name, arguments: args } = request.params;
-  const client = await getClient();
+
+  // Only connect to ADT if the tool actually needs it
+  const client = NO_ADT_TOOLS.has(name) ? null! : await getClient();
 
   try {
     const handler = HANDLER_MAP.get(name);

@@ -56,7 +56,7 @@ Zugriff auf ein SAP ABAP-System über die ADT REST API — ohne VS Code als Brü
 | ABAPGIT | 2 | Repos auflisten, Pull ausführen |
 | QUERY | 4 | Workflow-Analyse, SELECT-Statements, inaktive Objekte, ABAP-Snippets ausführen |
 | DOCUMENTATION | 5 | ABAP-Keyword-Doku, Klassen-Doku, Modul-Best-Practices, Clean ABAP, ABAP-Syntax |
-| WEBSEARCH | 1 | Websuche in SAP Help, Community & Notes |
+| WEBSEARCH | 2 | URL-Inhalte lesen (`fetch_url`), Websuche in SAP Help, Community & Notes |
 | BATCH | 1 | Parallele Ausführung mehrerer Read-Only-Tools in einem MCP-Call |
 | ANALYSIS | 2 | Where-Used-Call-Graph (Mermaid), Dead-Code-Erkennung |
 | INTENT | 4 | Konsolidierte Verben `SAPRead`/`SAPWrite`/`SAPSearch`/`SAPDiagnose` |
@@ -155,7 +155,7 @@ cp .env.example .env
 | `SAP_ABAP_VERSION` | | `latest` | ABAP-Version für help.sap.com Dokumentation (z.B. `latest`, `758`, `754`) |
 | `SAP_ALLOW_UNAUTHORIZED` | | `false` | Self-signed SSL-Zertifikate akzeptieren (nur DEV!) |
 | `DEFER_TOOLS` | | `true` | Tool-Deferred-Modus: initial nur 13 Kern-Tools laden |
-| `TAVILY_API_KEY` | | — | Tavily Search API Key (für `search_sap_web`). Free: 1000/Monat |
+| `TAVILY_API_KEY` | | — | Tavily API Key (für `fetch_url` und `search_sap_web`). Free: 1000/Monat |
 
 ### Beispiel .env (Entwicklungssystem)
 
@@ -258,7 +258,7 @@ Kategorieübersicht anzeigen
 → find_tools()
 ```
 
-**Kern-Tools (immer verfügbar):** `search_abap_objects`, `search_source_code`, `read_abap_source`, `write_abap_source`, `get_object_info`, `where_used`, `analyze_abap_context`, `search_abap_syntax`, `validate_ddic_references`, `batch_read`, `search_sap_web`, `get_abap_contract`, `SAPRead`, `SAPWrite`, `SAPSearch`, `SAPDiagnose`, `find_tools`, `list_tools`
+**Kern-Tools (immer verfügbar):** `search_abap_objects`, `search_source_code`, `read_abap_source`, `write_abap_source`, `get_object_info`, `where_used`, `analyze_abap_context`, `search_abap_syntax`, `validate_ddic_references`, `batch_read`, `fetch_url`, `search_sap_web`, `get_abap_contract`, `SAPRead`, `SAPWrite`, `SAPSearch`, `SAPDiagnose`, `find_tools`, `list_tools`
 
 ---
 
@@ -1651,7 +1651,44 @@ Quellcode einer Einheit lesen/schreiben: URL + `/source/main`
 
 ---
 
-## WEBSEARCH — SAP Web-Suche
+## WEBSEARCH — Web-Zugriff & SAP Web-Suche
+
+### `fetch_url`
+
+Liest und extrahiert den lesbaren Inhalt einer beliebigen URL. Funktioniert auch mit JavaScript-gerenderten Seiten (SPAs) wie dem SAP Help Portal, SAP Community Blogs, SAP Notes oder jeder anderen Webseite. Gibt den extrahierten Textinhalt zurück.
+
+**Voraussetzungen:** `TAVILY_API_KEY` muss in der `.env` gesetzt sein.
+
+> **Ja, `fetch_url` benötigt Tavily.** Das Tool nutzt die Tavily Extract API, um JavaScript-gerenderte Seiten (SPAs) zu lesen. Ein einfacher HTTP-Request würde bei SPAs wie dem SAP Help Portal nur eine leere HTML-Hülle zurückgeben. Tavily rendert die Seite serverseitig und extrahiert den lesbaren Text.
+
+**Parameter:**
+
+| Parameter | Typ | Pflicht | Beschreibung |
+|-----------|-----|---------|--------------|
+| `url` | string | ✓ | URL der zu lesenden Seite (z.B. `https://help.sap.com/docs/...`) |
+
+**Beispiele:**
+```
+SAP Help Seite lesen
+→ fetch_url(url="https://help.sap.com/docs/SAP_DATASPHERE/e4059f908d16406492956e5dbcf142dc/df2dd6a7deaa4e34ad2f4ebff85881f7.html?locale=en-US")
+
+SAP Community Blog lesen
+→ fetch_url(url="https://community.sap.com/t5/...")
+
+Beliebige Webseite lesen
+→ fetch_url(url="https://example.com/some-page")
+```
+
+**Verhalten:**
+1. **Strategie 1:** Tavily Extract API — rendert JavaScript und extrahiert den Seiteninhalt
+2. **Strategie 2 (Fallback):** Tavily Search mit `include_raw_content` — sucht die URL und gibt den gecachten Inhalt zurück
+3. Sehr lange Inhalte werden auf ~15.000 Zeichen gekürzt, um Token-Explosion zu vermeiden
+
+**Unterschied zu `search_sap_web`:** `fetch_url` liest den Inhalt einer **bekannten URL**. `search_sap_web` **sucht** nach Inhalten anhand von Suchbegriffen.
+
+> **Hinweis:** Dieses Tool ist ein Kern-Tool und immer verfügbar (auch im Deferred-Modus). Benötigt keine SAP-Systemverbindung.
+
+---
 
 ### `search_sap_web`
 

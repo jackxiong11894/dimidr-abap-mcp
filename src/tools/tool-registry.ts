@@ -27,7 +27,7 @@ export const TOOL_CATEGORIES: Record<string, string[]> = {
   ABAPGIT:     ["get_abapgit_repos", "abapgit_pull"],
   QUERY:       ["analyze_workflow", "run_select_query", "get_inactive_objects", "execute_abap_snippet"],
   DOCUMENTATION: ["get_abap_keyword_doc", "get_abap_class_doc", "get_module_best_practices", "search_abap_syntax", "search_clean_abap"],
-  WEBSEARCH:   ["search_sap_web"],
+  WEBSEARCH:   ["fetch_url", "search_sap_web"],
   BATCH:       ["batch_read"],
   ANALYSIS:    ["get_call_graph", "find_dead_code"],
   INTENT:      ["SAPRead", "SAPWrite", "SAPSearch", "SAPDiagnose"],
@@ -40,6 +40,7 @@ export const CORE_TOOL_NAMES = new Set([
   "search_abap_syntax",       // mandatory in abap_develop Step 5.1
   "validate_ddic_references", // mandatory in abap_develop Step 5.3
   "batch_read",               // performance: always available for parallel reads
+  "fetch_url",                // URL content extraction — read any web page (SPA-compatible)
   "search_sap_web",           // web search for SAP Help, Community & Notes — used in abap_develop Steps 2 & 5
   "get_abap_contract",        // context compression — cheap API-surface reads of dependencies
   // Intent facade: consolidated verbs always available so clients can use a
@@ -134,6 +135,7 @@ export const TOOL_SHORT_DESCRIPTIONS: Record<string, string> = {
   get_module_best_practices: "Module-specific SAP best practices (FI, MM, SD…)",
   search_clean_abap:     "Search Clean ABAP Styleguide for best practices",
   search_abap_syntax:    "Search ABAP syntax docs from help.sap.com",
+  fetch_url:             "Fetch & extract readable content from any URL (SPA-compatible)",
   search_sap_web:        "Web search across SAP Help, Community & Notes (Google CSE)",
   batch_read:            "Execute multiple read-only tools in one parallel MCP call",
   get_call_graph:        "Where-used dependency graph (Mermaid) for impact analysis",
