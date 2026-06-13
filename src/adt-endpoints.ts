@@ -81,6 +81,12 @@ export const ADT_ACM_DCL_SOURCES = "/sap/bc/adt/acm/dcl/sources";
  * Note: abap-adt-api has no BDEF support — this handler uses a direct httpClient POST. */
 export const ADT_BO_BEHAVIORS = "/sap/bc/adt/bo/behaviordefinitions";
 
+/** Custom DDIC CRUD endpoint (ZCL_ADT_DDIC_HANDLER ICF service)
+ * Used by: create_domain, update_domain, create_data_element, update_data_element,
+ *          create_structure, update_structure
+ * Pattern: {base}/{type}/{name} where type = doma|dtel|stru|tabl */
+export const ADT_ZDDIC_CRUD = "/sap/bc/zddic_crud";
+
 // ── Packages ────────────────────────────────────────────────────────
 
 /** Package path (parent for object creation)

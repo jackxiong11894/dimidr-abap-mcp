@@ -158,6 +158,76 @@ export const S_CreateBehaviorDefinition = z.object({
   transport:   z.string().optional(),
 });
 
+// --- DDIC CRUD (via custom /sap/bc/zddic_crud endpoint) ---
+export const S_CreateDomain = z.object({
+  name:        z.string().min(1).max(30).describe("Domain name, must start with Z or Y"),
+  description: z.string().max(40).describe("Short description"),
+  datatype:    z.string().describe("Data type (e.g. CHAR, NUMC, DATS, TIMS, DEC, INT1, INT2, INT4, INT8, CURR, QUAN)"),
+  length:      z.number().int().min(1).describe("Field length"),
+  decimals:    z.number().int().min(0).default(0).optional().describe("Decimal places (for DEC/CURR/QUAN)"),
+  devClass:    z.string().describe("Package, e.g. ZLOCAL or $TMP"),
+  transport:   z.string().optional().describe("Transport request"),
+});
+export const S_UpdateDomain = z.object({
+  name:        z.string().min(1).max(30).describe("Domain name to update"),
+  description: z.string().max(40).optional().describe("New description"),
+  datatype:    z.string().optional().describe("New data type"),
+  length:      z.number().int().min(1).optional().describe("New field length"),
+  decimals:    z.number().int().min(0).optional().describe("New decimal places"),
+  devClass:    z.string().optional().describe("Package"),
+  transport:   z.string().optional().describe("Transport request"),
+});
+export const S_CreateDataElement = z.object({
+  name:        z.string().min(1).max(30).describe("Data element name, must start with Z or Y"),
+  description: z.string().max(40).describe("Short description (DDTEXT)"),
+  domain:      z.string().describe("Domain name (e.g. ZDM_MY_DOMAIN)"),
+  shortLabel:  z.string().max(10).optional().describe("Short field label (SCRTEXT_S)"),
+  mediumLabel: z.string().max(20).optional().describe("Medium field label (SCRTEXT_M)"),
+  longLabel:   z.string().max(40).optional().describe("Long field label (SCRTEXT_L)"),
+  devClass:    z.string().describe("Package, e.g. ZLOCAL or $TMP"),
+  transport:   z.string().optional().describe("Transport request"),
+});
+export const S_UpdateDataElement = z.object({
+  name:        z.string().min(1).max(30).describe("Data element name to update"),
+  description: z.string().max(40).optional().describe("New description"),
+  domain:      z.string().optional().describe("New domain name"),
+  shortLabel:  z.string().max(10).optional().describe("Short field label"),
+  mediumLabel: z.string().max(20).optional().describe("Medium field label"),
+  longLabel:   z.string().max(40).optional().describe("Long field label"),
+  devClass:    z.string().optional().describe("Package"),
+  transport:   z.string().optional().describe("Transport request"),
+});
+export const S_CreateStructure = z.object({
+  name:        z.string().min(1).max(16).describe("Structure name, must start with Z or Y"),
+  description: z.string().max(40).describe("Short description"),
+  fields:      z.array(z.object({
+    name:        z.string().describe("Field name"),
+    rollname:    z.string().optional().describe("Data element name (for type reference)"),
+    datatype:    z.string().optional().describe("Data type (if not using data element)"),
+    length:      z.number().int().optional().describe("Field length (if not using data element)"),
+    decimals:    z.number().int().optional().describe("Decimal places"),
+    key:         z.boolean().default(false).optional().describe("Key field flag"),
+    description: z.string().optional().describe("Field description"),
+  })).optional().describe("Structure fields"),
+  devClass:    z.string().describe("Package, e.g. ZLOCAL or $TMP"),
+  transport:   z.string().optional().describe("Transport request"),
+});
+export const S_UpdateStructure = z.object({
+  name:        z.string().min(1).max(16).describe("Structure name to update"),
+  description: z.string().max(40).optional().describe("New description"),
+  fields:      z.array(z.object({
+    name:        z.string().describe("Field name"),
+    rollname:    z.string().optional().describe("Data element name"),
+    datatype:    z.string().optional().describe("Data type"),
+    length:      z.number().int().optional().describe("Field length"),
+    decimals:    z.number().int().optional().describe("Decimal places"),
+    key:         z.boolean().default(false).optional().describe("Key field flag"),
+    description: z.string().optional().describe("Field description"),
+  })).optional().describe("Structure fields (replaces existing)"),
+  devClass:    z.string().optional().describe("Package"),
+  transport:   z.string().optional().describe("Transport request"),
+});
+
 // --- DELETE ---
 export const S_DeleteObject = z.object({
   objectUrl:  z.string().describe("ADT URL of the object to delete"),

@@ -19,6 +19,8 @@ export const TOOL_CATEGORIES: Record<string, string[]> = {
                 "create_service_definition", "create_service_binding",
                 "publish_service_binding", "create_data_control_language",
                 "create_behavior_definition"],
+  DDIC:        ["create_domain", "update_domain", "create_data_element", "update_data_element",
+                "create_structure", "update_structure"],
   DELETE:      ["delete_abap_object"],
   TEST:        ["run_unit_tests", "create_test_include"],
   QUALITY:     ["run_syntax_check", "run_atc_check", "validate_ddic_references", "review_clean_abap"],
@@ -59,6 +61,7 @@ export const FIND_TOOLS_ENTRY = {
     "⚠️ Most tools are deferred — call this BEFORE using any non-core tool! " +
     "Categories: SEARCH, READ, WRITE, CREATE (programs, classes, interfaces, function groups, CDS views, tables, " +
     "message classes, CDS metadata extensions, service definitions, service bindings, data control language), " +
+    "DDIC (create/update domains, data elements, structures via custom endpoint), " +
     "DELETE, TEST, QUALITY (syntax check, ATC, Clean ABAP review, DDIC validation), " +
     "DIAGNOSTICS (short dumps, traces), TRANSPORT, ABAPGIT, QUERY, " +
     "DOCUMENTATION (ABAP syntax help), WEBSEARCH (Google SAP web search), BATCH (parallel read operations), " +
@@ -112,6 +115,12 @@ export const TOOL_SHORT_DESCRIPTIONS: Record<string, string> = {
   publish_service_binding:          "Publish a Service Binding to activate the OData endpoint",
   create_data_control_language:     "Create new CDS Data Control Language source (DCLS) for access control",
   create_behavior_definition:       "Create new RAP Behavior Definition (BDEF) — direct ADT HTTP, BDL via write_abap_source",
+  create_domain:                    "Create new DDIC Domain (datatype, length, value range)",
+  update_domain:                    "Update existing DDIC Domain",
+  create_data_element:              "Create new DDIC Data Element (labels, domain reference)",
+  update_data_element:              "Update existing DDIC Data Element",
+  create_structure:                 "Create new DDIC Structure (INTTAB with fields)",
+  update_structure:                 "Update existing DDIC Structure",
   delete_abap_object:    "Permanently delete an object (⛔ irreversible)",
   run_unit_tests:        "Run ABAP Unit Tests, return results",
   create_test_include:   "Create test include (CCAU) for a class",

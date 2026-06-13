@@ -56,6 +56,11 @@ import { handleReadAbapMethod, handleEditAbapMethod } from "./handlers/method.js
 import { handleGetAbapContract } from "./handlers/contract.js";
 import { handleGetCallGraph, handleFindDeadCode } from "./handlers/analysis.js";
 import { handleSapRead, handleSapWrite, handleSapSearch, handleSapDiagnose } from "./handlers/intent.js";
+import {
+  handleCreateDomain, handleUpdateDomain,
+  handleCreateDataElement, handleUpdateDataElement,
+  handleCreateStructure, handleUpdateStructure,
+} from "./handlers/ddic.js";
 
 // ── Dispatch map ────────────────────────────────────────────────────────────
 
@@ -100,6 +105,14 @@ export const HANDLER_MAP: Map<string, ToolHandler> = new Map([
   ["publish_service_binding",       handlePublishServiceBinding],
   ["create_data_control_language",  handleCreateDataControlLanguage],
   ["create_behavior_definition",    handleCreateBehaviorDefinition],
+
+  // DDIC CRUD (custom endpoint)
+  ["create_domain",                 handleCreateDomain],
+  ["update_domain",                 handleUpdateDomain],
+  ["create_data_element",           handleCreateDataElement],
+  ["update_data_element",           handleUpdateDataElement],
+  ["create_structure",              handleCreateStructure],
+  ["update_structure",              handleUpdateStructure],
 
   // DELETE
   ["delete_abap_object",      handleDeleteAbapObject],

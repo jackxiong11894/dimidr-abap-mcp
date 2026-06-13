@@ -100,6 +100,26 @@ export const TOOLS: ToolDef[] = [
     description: "Creates a new RAP Behavior Definition (BDEF) object. The BDEF name must exactly match the root CDS entity name. Must start with Z or Y. After creation, write the BDL source (managed; / unmanaged; / projection; etc.) with write_abap_source — use the rap-bdef skill for syntax guidance. ⚠️ Requires ALLOW_WRITE=true. ⚠️ Uses direct ADT HTTP (abap-adt-api has no BDEF support).",
     schema: S.S_CreateBehaviorDefinition },
 
+  // ── DDIC CRUD (via custom /sap/bc/zddic_crud endpoint) ──────────────────
+  { name: "create_domain",
+    description: "Creates a new ABAP Domain via the custom DDIC CRUD endpoint. Domains define the technical attributes (data type, length, value range) of data elements. Name must start with Z or Y. ⚠️ Requires ALLOW_WRITE=true. ⚠️ Requires ZCL_ADT_DDIC_HANDLER deployed in SAP.",
+    schema: S.S_CreateDomain },
+  { name: "update_domain",
+    description: "Updates an existing ABAP Domain. Only provided fields are updated. ⚠️ Requires ALLOW_WRITE=true. ⚠️ Requires ZCL_ADT_DDIC_HANDLER deployed in SAP.",
+    schema: S.S_UpdateDomain },
+  { name: "create_data_element",
+    description: "Creates a new ABAP Data Element via the custom DDIC CRUD endpoint. Data elements define field labels and reference a domain for technical attributes. Name must start with Z or Y. ⚠️ Requires ALLOW_WRITE=true. ⚠️ Requires ZCL_ADT_DDIC_HANDLER deployed in SAP.",
+    schema: S.S_CreateDataElement },
+  { name: "update_data_element",
+    description: "Updates an existing ABAP Data Element. Only provided fields are updated. ⚠️ Requires ALLOW_WRITE=true. ⚠️ Requires ZCL_ADT_DDIC_HANDLER deployed in SAP.",
+    schema: S.S_UpdateDataElement },
+  { name: "create_structure",
+    description: "Creates a new ABAP Structure (INTTAB) via the custom DDIC CRUD endpoint. Structures define field compositions for use in programs, function modules, and CDS views. Name must start with Z or Y. ⚠️ Requires ALLOW_WRITE=true. ⚠️ Requires ZCL_ADT_DDIC_HANDLER deployed in SAP.",
+    schema: S.S_CreateStructure },
+  { name: "update_structure",
+    description: "Updates an existing ABAP Structure. Only provided fields are updated. ⚠️ Requires ALLOW_WRITE=true. ⚠️ Requires ZCL_ADT_DDIC_HANDLER deployed in SAP.",
+    schema: S.S_UpdateStructure },
+
   // ── DELETE ──────────────────────────────────────────────────────────────
   { name: "delete_abap_object",
     description: "Permanently deletes an ABAP object. ⛔ CANNOT BE UNDONE. Requires ALLOW_DELETE=true and ALLOW_WRITE=true.",
