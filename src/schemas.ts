@@ -181,6 +181,7 @@ export const S_CreateDataElement = z.object({
   name:        z.string().min(1).max(30).describe("Data element name, must start with Z or Y"),
   description: z.string().max(40).describe("Short description (DDTEXT)"),
   domain:      z.string().describe("Domain name (e.g. ZDM_MY_DOMAIN)"),
+  headingLabel: z.string().max(55).optional().describe("Column heading / title text (REPTEXT)"),
   shortLabel:  z.string().max(10).optional().describe("Short field label (SCRTEXT_S)"),
   mediumLabel: z.string().max(20).optional().describe("Medium field label (SCRTEXT_M)"),
   longLabel:   z.string().max(40).optional().describe("Long field label (SCRTEXT_L)"),
@@ -191,9 +192,10 @@ export const S_UpdateDataElement = z.object({
   name:        z.string().min(1).max(30).describe("Data element name to update"),
   description: z.string().max(40).optional().describe("New description"),
   domain:      z.string().optional().describe("New domain name"),
-  shortLabel:  z.string().max(10).optional().describe("Short field label"),
-  mediumLabel: z.string().max(20).optional().describe("Medium field label"),
-  longLabel:   z.string().max(40).optional().describe("Long field label"),
+  headingLabel: z.string().max(55).optional().describe("Column heading / title text (REPTEXT)"),
+  shortLabel:  z.string().max(10).optional().describe("Short field label (SCRTEXT_S)"),
+  mediumLabel: z.string().max(20).optional().describe("Medium field label (SCRTEXT_M)"),
+  longLabel:   z.string().max(40).optional().describe("Long field label (SCRTEXT_L)"),
   devClass:    z.string().optional().describe("Package"),
   transport:   z.string().optional().describe("Transport request"),
 });
@@ -207,7 +209,11 @@ export const S_CreateStructure = z.object({
     length:      z.number().int().optional().describe("Field length (if not using data element)"),
     decimals:    z.number().int().optional().describe("Decimal places"),
     key:         z.boolean().default(false).optional().describe("Key field flag"),
-    description: z.string().optional().describe("Field description"),
+    description: z.string().optional().describe("Field description (DDTEXT)"),
+    headingLabel: z.string().max(55).optional().describe("Column heading / title text (REPTEXT)"),
+    shortLabel:  z.string().max(10).optional().describe("Short field label (SCRTEXT_S)"),
+    mediumLabel: z.string().max(20).optional().describe("Medium field label (SCRTEXT_M)"),
+    longLabel:   z.string().max(40).optional().describe("Long field label (SCRTEXT_L)"),
   })).optional().describe("Structure fields"),
   devClass:    z.string().describe("Package, e.g. ZLOCAL or $TMP"),
   transport:   z.string().optional().describe("Transport request"),
@@ -222,7 +228,11 @@ export const S_UpdateStructure = z.object({
     length:      z.number().int().optional().describe("Field length"),
     decimals:    z.number().int().optional().describe("Decimal places"),
     key:         z.boolean().default(false).optional().describe("Key field flag"),
-    description: z.string().optional().describe("Field description"),
+    description: z.string().optional().describe("Field description (DDTEXT)"),
+    headingLabel: z.string().max(55).optional().describe("Column heading / title text (REPTEXT)"),
+    shortLabel:  z.string().max(10).optional().describe("Short field label (SCRTEXT_S)"),
+    mediumLabel: z.string().max(20).optional().describe("Medium field label (SCRTEXT_M)"),
+    longLabel:   z.string().max(40).optional().describe("Long field label (SCRTEXT_L)"),
   })).optional().describe("Structure fields (replaces existing)"),
   devClass:    z.string().optional().describe("Package"),
   transport:   z.string().optional().describe("Transport request"),
@@ -493,7 +503,8 @@ export const S_IntentWrite = z.object({
   operation: z.string().describe(
     "What to write: source | method | activate | pretty_print | create_program | create_class | create_interface | " +
     "create_function_group | create_cds_view | create_table | create_message_class | create_metadata_extension | " +
-    "create_service_definition | create_service_binding | publish_service_binding | create_dcl | create_bdef | delete"),
+    "create_service_definition | create_service_binding | publish_service_binding | create_dcl | create_bdef | " +
+    "create_domain | update_domain | create_data_element | update_data_element | create_structure | update_structure | delete"),
   args: coerceArgsObject.describe("Arguments for the underlying tool (same shape as the granular tool)"),
 });
 export const S_IntentSearch = z.object({

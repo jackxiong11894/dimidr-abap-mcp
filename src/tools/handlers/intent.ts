@@ -47,6 +47,13 @@ const WRITE_OPS: Record<string, string> = {
   publish_service_binding: "publish_service_binding",
   create_dcl: "create_data_control_language",
   create_bdef: "create_behavior_definition",
+  // DDIC CRUD (custom endpoint)
+  create_domain: "create_domain",
+  update_domain: "update_domain",
+  create_data_element: "create_data_element",
+  update_data_element: "update_data_element",
+  create_structure: "create_structure",
+  update_structure: "update_structure",
   delete: "delete_abap_object",
 };
 const SEARCH_OPS: Record<string, string> = {

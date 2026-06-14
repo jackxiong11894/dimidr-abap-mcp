@@ -101,23 +101,26 @@ export const TOOLS: ToolDef[] = [
     schema: S.S_CreateBehaviorDefinition },
 
   // ── DDIC CRUD (via custom /sap/bc/zddic_crud endpoint) ──────────────────
+  // NOTE: SAP ADT provides no native API for creating domains, data elements, or structures.
+  // These tools use a custom ICF service (ZCL_ADT_DDIC_HANDLER) that must be deployed on the SAP system.
+  // The server handles the full lifecycle: DDIF_*_PUT → DDIF_*_ACTIVATE → transport assignment.
   { name: "create_domain",
-    description: "Creates a new ABAP Domain via the custom DDIC CRUD endpoint. Domains define the technical attributes (data type, length, value range) of data elements. Name must start with Z or Y. ⚠️ Requires ALLOW_WRITE=true. ⚠️ Requires ZCL_ADT_DDIC_HANDLER deployed in SAP.",
+    description: "Creates a new ABAP Domain via custom DDIC CRUD endpoint. SAP ADT has no native API for domain creation. Domains define technical attributes (data type, length, value range). Name must start with Z or Y. Object is created AND activated in one step. Requires ALLOW_WRITE=true. Requires ZCL_ADT_DDIC_HANDLER in SAP. Use SAPWrite(operation=create_domain) as alternative.",
     schema: S.S_CreateDomain },
   { name: "update_domain",
-    description: "Updates an existing ABAP Domain. Only provided fields are updated. ⚠️ Requires ALLOW_WRITE=true. ⚠️ Requires ZCL_ADT_DDIC_HANDLER deployed in SAP.",
+    description: "Updates an existing ABAP Domain via custom DDIC CRUD endpoint. Only provided fields are updated; omitted fields remain unchanged. Object is re-activated after update. Requires ALLOW_WRITE=true. Requires ZCL_ADT_DDIC_HANDLER in SAP.",
     schema: S.S_UpdateDomain },
   { name: "create_data_element",
-    description: "Creates a new ABAP Data Element via the custom DDIC CRUD endpoint. Data elements define field labels and reference a domain for technical attributes. Name must start with Z or Y. ⚠️ Requires ALLOW_WRITE=true. ⚠️ Requires ZCL_ADT_DDIC_HANDLER deployed in SAP.",
+    description: "Creates a new ABAP Data Element via custom DDIC CRUD endpoint. SAP ADT has no native API for data element creation. Data elements define field labels and reference a domain for technical attributes. All 4 text fields (headingLabel, shortLabel, mediumLabel, longLabel) should be provided for proper ALV display. Name must start with Z or Y. Object is created AND activated in one step. Requires ALLOW_WRITE=true. Requires ZCL_ADT_DDIC_HANDLER in SAP. Use SAPWrite(operation=create_data_element) as alternative.",
     schema: S.S_CreateDataElement },
   { name: "update_data_element",
-    description: "Updates an existing ABAP Data Element. Only provided fields are updated. ⚠️ Requires ALLOW_WRITE=true. ⚠️ Requires ZCL_ADT_DDIC_HANDLER deployed in SAP.",
+    description: "Updates an existing ABAP Data Element via custom DDIC CRUD endpoint. Only provided fields are updated; omitted fields remain unchanged. Object is re-activated after update. Requires ALLOW_WRITE=true. Requires ZCL_ADT_DDIC_HANDLER in SAP.",
     schema: S.S_UpdateDataElement },
   { name: "create_structure",
-    description: "Creates a new ABAP Structure (INTTAB) via the custom DDIC CRUD endpoint. Structures define field compositions for use in programs, function modules, and CDS views. Name must start with Z or Y. ⚠️ Requires ALLOW_WRITE=true. ⚠️ Requires ZCL_ADT_DDIC_HANDLER deployed in SAP.",
+    description: "Creates a new ABAP Structure (INTTAB) via custom DDIC CRUD endpoint. SAP ADT has no native API for structure creation. Structures define field compositions; each field can reference a data element (rollname) or specify direct type (datatype+length). Name must start with Z or Y. Object is created AND activated in one step. Requires ALLOW_WRITE=true. Requires ZCL_ADT_DDIC_HANDLER in SAP. Use SAPWrite(operation=create_structure) as alternative.",
     schema: S.S_CreateStructure },
   { name: "update_structure",
-    description: "Updates an existing ABAP Structure. Only provided fields are updated. ⚠️ Requires ALLOW_WRITE=true. ⚠️ Requires ZCL_ADT_DDIC_HANDLER deployed in SAP.",
+    description: "Updates an existing ABAP Structure via custom DDIC CRUD endpoint. Only provided fields are updated; omitted fields remain unchanged. Object is re-activated after update. Requires ALLOW_WRITE=true. Requires ZCL_ADT_DDIC_HANDLER in SAP.",
     schema: S.S_UpdateStructure },
 
   // ── DELETE ──────────────────────────────────────────────────────────────

@@ -84,7 +84,8 @@ export const ADT_BO_BEHAVIORS = "/sap/bc/adt/bo/behaviordefinitions";
 /** Custom DDIC CRUD endpoint (ZCL_ADT_DDIC_HANDLER ICF service)
  * Used by: create_domain, update_domain, create_data_element, update_data_element,
  *          create_structure, update_structure
- * Pattern: {base}/{type}/{name} where type = doma|dtel|stru|tabl */
+ * Pattern: POST {base}/{type} for create, PUT {base}/{type}/{name} for update
+ *          where type = doma|dtel|stru */
 export const ADT_ZDDIC_CRUD = "/sap/bc/zddic_crud";
 
 // ── Packages ────────────────────────────────────────────────────────
