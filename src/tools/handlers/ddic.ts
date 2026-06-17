@@ -56,12 +56,13 @@ async function ddicRequest(
   if (transport) qs.corrNr = transport;
 
   try {
-    return await client.httpClient.request(url, {
+    const resp = await client.httpClient.request(url, {
       method,
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       qs,
       body: JSON.stringify(body),
     });
+    return resp;
   } catch (e) {
     const errMsg = e instanceof Error ? e.message : String(e);
 
@@ -90,7 +91,7 @@ export async function handleCreateDomain(client: ADTClient, args: Record<string,
   const n = p.name.toUpperCase();
 
   const body: Record<string, unknown> = {
-    type:        "doma",
+    type:        "DOMA",
     name:        n,
     description: p.description,
     datatype:    p.datatype.toUpperCase(),
@@ -118,7 +119,7 @@ export async function handleUpdateDomain(client: ADTClient, args: Record<string,
   assertCustomerNamespace(p.name, ["Z", "Y"]);
   const n = p.name.toUpperCase();
 
-  const body: Record<string, unknown> = { type: "doma", name: n };
+  const body: Record<string, unknown> = { type: "DOMA", name: n };
   if (p.description !== undefined) body.description = p.description;
   if (p.datatype !== undefined) body.datatype = p.datatype.toUpperCase();
   if (p.length !== undefined) body.length = p.length;
@@ -142,7 +143,7 @@ export async function handleCreateDataElement(client: ADTClient, args: Record<st
   const n = p.name.toUpperCase();
 
   const body: Record<string, unknown> = {
-    type:         "dtel",
+    type:         "DTEL",
     name:         n,
     description:  p.description,
     domain:       p.domain.toUpperCase(),
@@ -173,7 +174,7 @@ export async function handleUpdateDataElement(client: ADTClient, args: Record<st
   assertCustomerNamespace(p.name, ["Z", "Y"]);
   const n = p.name.toUpperCase();
 
-  const body: Record<string, unknown> = { type: "dtel", name: n };
+  const body: Record<string, unknown> = { type: "DTEL", name: n };
   if (p.description !== undefined) body.description = p.description;
   if (p.domain !== undefined) body.domain = p.domain.toUpperCase();
   if (p.headingLabel !== undefined) body.headingLabel = p.headingLabel;
@@ -199,7 +200,7 @@ export async function handleCreateStructure(client: ADTClient, args: Record<stri
   const n = p.name.toUpperCase();
 
   const body: Record<string, unknown> = {
-    type:        "stru",
+    type:        "STRU",
     name:        n,
     description: p.description,
     fields:      p.fields ?? [],
@@ -224,7 +225,7 @@ export async function handleUpdateStructure(client: ADTClient, args: Record<stri
   assertCustomerNamespace(p.name, ["Z", "Y"]);
   const n = p.name.toUpperCase();
 
-  const body: Record<string, unknown> = { type: "stru", name: n };
+  const body: Record<string, unknown> = { type: "STRU", name: n };
   if (p.description !== undefined) body.description = p.description;
   if (p.fields !== undefined) body.fields = p.fields;
   if (p.devClass !== undefined) body.package = p.devClass;

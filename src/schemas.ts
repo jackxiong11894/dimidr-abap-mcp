@@ -179,23 +179,31 @@ export const S_UpdateDomain = z.object({
 });
 export const S_CreateDataElement = z.object({
   name:        z.string().min(1).max(30).describe("Data element name, must start with Z or Y"),
-  description: z.string().max(40).describe("Short description (DDTEXT)"),
+  description: z.string().max(60).describe("Short description (DDTEXT)"),
   domain:      z.string().describe("Domain name (e.g. ZDM_MY_DOMAIN)"),
   headingLabel: z.string().max(55).optional().describe("Column heading / title text (REPTEXT)"),
   shortLabel:  z.string().max(10).optional().describe("Short field label (SCRTEXT_S)"),
   mediumLabel: z.string().max(20).optional().describe("Medium field label (SCRTEXT_M)"),
   longLabel:   z.string().max(40).optional().describe("Long field label (SCRTEXT_L)"),
+  headLen:     z.number().int().min(0).max(55).optional().describe("Heading length (HEADLEN)"),
+  scrLen1:     z.number().int().min(0).max(10).optional().describe("Short label length (SCRLEN1)"),
+  scrLen2:     z.number().int().min(0).max(20).optional().describe("Medium label length (SCRLEN2)"),
+  scrLen3:     z.number().int().min(0).max(40).optional().describe("Long label length (SCRLEN3)"),
   devClass:    z.string().describe("Package, e.g. ZLOCAL or $TMP"),
   transport:   z.string().optional().describe("Transport request"),
 });
 export const S_UpdateDataElement = z.object({
   name:        z.string().min(1).max(30).describe("Data element name to update"),
-  description: z.string().max(40).optional().describe("New description"),
+  description: z.string().max(60).optional().describe("New description (DDTEXT)"),
   domain:      z.string().optional().describe("New domain name"),
   headingLabel: z.string().max(55).optional().describe("Column heading / title text (REPTEXT)"),
   shortLabel:  z.string().max(10).optional().describe("Short field label (SCRTEXT_S)"),
   mediumLabel: z.string().max(20).optional().describe("Medium field label (SCRTEXT_M)"),
   longLabel:   z.string().max(40).optional().describe("Long field label (SCRTEXT_L)"),
+  headLen:     z.number().int().min(0).max(55).optional().describe("Heading length (HEADLEN)"),
+  scrLen1:     z.number().int().min(0).max(10).optional().describe("Short label length (SCRLEN1)"),
+  scrLen2:     z.number().int().min(0).max(20).optional().describe("Medium label length (SCRLEN2)"),
+  scrLen3:     z.number().int().min(0).max(40).optional().describe("Long label length (SCRLEN3)"),
   devClass:    z.string().optional().describe("Package"),
   transport:   z.string().optional().describe("Transport request"),
 });

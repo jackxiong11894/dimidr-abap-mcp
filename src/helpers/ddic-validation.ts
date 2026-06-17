@@ -33,7 +33,8 @@ export async function validateDdicReferencesInternal(client: ADTClient, source: 
 
   const skipTable = (t: string) =>
     /^[LG][TSVO]_/.test(t) || /^[LG]S_/.test(t) ||
-    /^(C|N|I|F|P|X|D|T|STRING|XSTRING|ABAP_.*)$/.test(t);
+    /^(C|N|I|F|P|X|D|T|STRING|XSTRING|ABAP_.*)$/.test(t) ||
+    /^IF_/.test(t) || /^CX_/.test(t);
 
   const SQL_KW = new Set([
     "SINGLE", "DISTINCT", "COUNT", "SUM", "AVG", "MIN", "MAX", "AS", "CASE", "WHEN",
